@@ -1,0 +1,8 @@
+config.json
+.review-secret
+reviews.json
+dashboard.log
+fixes.json
+finishes.json
+starts.json
+rechecks.json

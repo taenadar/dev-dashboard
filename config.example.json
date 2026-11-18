@@ -1,0 +1,22 @@
+{
+  "NAME": "Alex",
+  "ORG": "https://dev.azure.com/your-org",
+  "ME": "you@example.com",
+  "NAME_SUFFIX": "",
+  "REPO_ROOT": "C:/Code/my-app",
+  "PR_SOURCES": [["MyProject", "my-app"], ["MyProject", "my-app-design", "all"]],
+  "WATCH_TARGET": "refs/heads/develop",
+  "THROUGHPUT_REPO": ["MyProject", "my-app"],
+  "THROUGHPUT_FROM": "2027-01-04",
+  "BACKLOG_PROJECT": "MyProject",
+  "BACKLOG_AREA": "MyProject\\MyTeam",
+  "BASES": ["origin/develop", "origin/main"],
+  "DRIFT": ["develop", "main"],
+  "DESIGN": ["MyProject", "my-app-design", "OPEN-QUESTIONS.md", "main"],
+  "DB_CONFIG": "",
+  "DEV_IMAGE_PREFIX": "",
+  "BUILD_HINT": "Build the projects that changed and run the tests that cover them.",
+  "SITES": [["My app", "https://localhost:5001/", "MyApp"]],
+  "T3_PROJECTS": ["C:/Code/my-app"],
+  "REVIEW_WEBHOOK": ""
+}

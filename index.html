@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dev dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2316a34a'/><path d='M9 17l5 5 9-12' stroke='white' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f6f8; --card: #ffffff; --raise: #fbfbfc; --fg: #1f2328; --muted: #6b7280; --faint: #9aa1ab; --border: #e3e6ea;
+    --info: #2563eb; --success: #16a34a; --warning: #d97706; --danger: #dc2626; --accent: #7c3aed;
+    --radius: 10px; --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    --shadow: 0 1px 2px rgb(16 24 40 / .04), 0 1px 3px rgb(16 24 40 / .06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0c0f14; --card: #141820; --raise: #191e27; --fg: #e6e8eb; --muted: #9aa3ae; --faint: #6b7380; --border: #252b35;
+      --info: #60a5fa; --success: #4ade80; --warning: #fbbf24; --danger: #f87171; --accent: #a78bfa; --shadow: none; }
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body { margin: 0; padding: 22px 26px 40px; font: 13px/1.45 var(--sans); color: var(--fg); max-width: 1800px; margin-inline: auto; }
+  a { color: inherit; text-decoration: none; } a:hover { text-decoration: underline; }
+  .mono, code { font-family: var(--mono); font-size: 11.5px; }
+  .muted { color: var(--muted); } .faint { color: var(--faint); }
+  h2 { font-size: 13px; font-weight: 650; margin: 0; letter-spacing: .01em; }
+  h3 { font-size: 11px; font-weight: 600; margin: 12px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  h3:first-child { margin-top: 0; }
+
+  /* header */
+  .top { display: flex; align-items: flex-end; gap: 16px; margin: -22px -26px 18px; padding: 22px 26px 12px; flex-wrap: wrap;
+    position: sticky; top: 0; z-index: 20; background: var(--bg); transition: box-shadow .15s, padding .15s; }
+  .top.stuck { padding-top: 10px; padding-bottom: 10px; box-shadow: 0 1px 0 var(--border), 0 4px 12px rgb(0 0 0 / .06); }
+  .top.stuck .sub { display: none; } .top.stuck .hello { font-size: 17px; }
+  @media (max-width: 700px) { .top { margin: -14px -14px 18px; padding: 14px; } }
+  .hello { font-size: 24px; font-weight: 650; letter-spacing: -.01em; }
+  .hello .wave { display: inline-block; transform-origin: 70% 70%; animation: wave 2.2s ease-in-out 1; }
+  @keyframes wave { 0%,60%,100% { transform: rotate(0) } 10%,30% { transform: rotate(14deg) } 20% { transform: rotate(-8deg) } 40% { transform: rotate(-4deg) } 50% { transform: rotate(10deg) } }
+  .sub { color: var(--muted); margin-top: 2px; }
+  .pills { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--card); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .pill[title] { cursor: help; }
+  button { font: inherit; font-size: 12px; color: var(--fg); background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+  button:hover { border-color: var(--faint); } button:disabled { opacity: .5; cursor: progress; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; background: var(--faint); }
+  .dot.ok { background: var(--success); } .dot.warn { background: var(--warning); } .dot.bad { background: var(--danger); } .dot.info { background: var(--info); }
+  .dot.live { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 60%, transparent); animation: pulse 2.4s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 55%, transparent) } 70% { box-shadow: 0 0 0 6px transparent } 100% { box-shadow: 0 0 0 0 transparent } }
+
+  /* hero */
+  .hero { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .kpi { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px 10px; box-shadow: var(--shadow); position: relative; overflow: hidden; min-height: 112px; display: flex; flex-direction: column; }
+  .kpi .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .kpi .v { font-size: 26px; font-weight: 650; line-height: 1.15; margin-top: 4px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .kpi .v small { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+  .kpi .d { font-size: 12px; color: var(--muted); margin-top: auto; padding-top: 4px; }
+  .kpi svg.spark { position: absolute; right: 10px; top: 12px; opacity: .9; }
+  .kpi.hot { border-color: color-mix(in srgb, var(--warning) 55%, var(--border)); }
+  .kpi.hot::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--warning); }
+  .kpi.bad::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--danger); }
+  .kpi.good::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--success); }
+  .meter { height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--faint) 22%, transparent); overflow: hidden; margin-top: 8px; display: flex; }
+  .meter > i { display: block; height: 100%; }
+
+  /* layout */
+  .grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; }
+  .card.wide { margin-top: 14px; }
+  .head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .head .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; background: none; color: var(--muted); padding: 3px 10px; }
+  .seg button.on { background: color-mix(in srgb, var(--faint) 18%, transparent); color: var(--fg); }
+  .err { color: var(--danger); font-size: 12px; } .err[title] { cursor: help; text-decoration: underline dotted; }
+  .empty { color: var(--faint); font-size: 12px; padding: 4px 0; }
+
+  /* lists */
+  .rows { display: flex; flex-direction: column; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--border); min-width: 0; }
+  .row:first-child { border-top: 0; }
+  .row .main { min-width: 0; flex: 1; }
+  #prs .row .s { white-space: normal; line-height: 1.9; }
+  .row .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .s { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }  .row .n { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12px; white-space: nowrap; text-align: right; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; border-radius: 999px; padding: 1px 8px; white-space: nowrap; border: 1px solid var(--border); color: var(--muted); }
+  .chip.ok { color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, var(--border)); background: color-mix(in srgb, var(--success) 9%, transparent); }
+  .chip.warn { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 40%, var(--border)); background: color-mix(in srgb, var(--warning) 9%, transparent); }
+  .chip.bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); background: color-mix(in srgb, var(--danger) 9%, transparent); }
+  .chip.info { color: var(--info); border-color: color-mix(in srgb, var(--info) 40%, var(--border)); background: color-mix(in srgb, var(--info) 9%, transparent); }
+  .chip.accent { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+  .code { font-family: var(--mono); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .who { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 9.5px; font-weight: 700; color: #fff; flex: none; }
+  .votes { display: inline-flex; gap: 3px; }
+  .prp { flex: none; margin-right: 6px; white-space: nowrap; }
+  span.prp { font-size: 11px; }
+  .prp.go { background: var(--info); border-color: var(--info); color: #fff; margin-right: 8px; }
+  .prp.go:disabled { opacity: .6; cursor: default; }
+  .prp.go.fin { background: var(--success); border-color: var(--success); }
+  .vote { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 9px; font-weight: 700; border: 2px solid var(--border); color: var(--muted); background: var(--raise); }
+  .vote.v10, .vote.v5 { border-color: var(--success); color: var(--success); } .vote.v-5 { border-color: var(--warning); color: var(--warning); } .vote.v-10 { border-color: var(--danger); color: var(--danger); }
+  .focus { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+
+  /* tables */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11.5px; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.dim td { opacity: .55; }
+  td.nw { white-space: nowrap; }
+  .vote.v0 { opacity: .4; }
+  details.fold > summary { cursor: pointer; list-style: none; font-size: 12px; color: var(--muted); padding: 8px 0 2px; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary::before { content: '▸ '; } details.fold[open] > summary::before { content: '▾ '; }
+  .twrap { overflow-x: auto; }
+
+  /* charts */
+  .chart { position: relative; }
+  .chart svg { display: block; overflow: visible; }
+  .ax { font-size: 10.5px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+  .lbl { font-size: 11px; fill: var(--fg); font-variant-numeric: tabular-nums; } .lbl.m { fill: var(--muted); }
+  .ctip { position: absolute; pointer-events: none; display: none; max-width: 320px; background: var(--raise); color: var(--fg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 20px rgb(0 0 0 / .18); z-index: 5; }
+  .ctip b { font-weight: 600; } .ctip .m { color: var(--muted); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+  .minis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .mini { border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; }
+  .mini .v { font-size: 17px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .mini .l { font-size: 11.5px; color: var(--muted); }
+
+  /* docker + machine */
+  .ctr { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 4px 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--border); }
+  .ctr:first-child { border-top: 0; padding-top: 0; }
+  .bars { display: flex; flex-direction: column; gap: 7px; }
+  .bar { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 12px; }
+  .bar .meter { margin: 0; }
+
+  /* graph */
+  .gbox { position: relative; overflow-x: auto; overflow-y: hidden; border: 1px solid var(--border); border-radius: 8px; }
+  .gbox svg { display: block; }
+  .node { cursor: pointer; } .node .c { font-size: 10.5px; font-weight: 600; fill: var(--fg); font-family: var(--mono); }
+  .node .tt { font-size: 10.5px; fill: var(--muted); } .node .gl { font-size: 11px; font-weight: 700; }
+  .edge { fill: none; stroke: var(--muted); stroke-opacity: .35; stroke-width: 1.2; } .edge.partial { stroke-dasharray: 4 3; }
+  .node.ctx { opacity: .45; }
+  .dimg .node { opacity: .16; } .dimg .edge { stroke-opacity: .06; } .dimg .node.hl { opacity: 1; } .dimg .edge.hl { stroke-opacity: .9; stroke-width: 1.8; }
+  .colhead { font-size: 10.5px; fill: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
+  .fchip { font-size: 11.5px; padding: 2px 9px; border-radius: 999px; color: var(--muted); }
+  .fchip.on { color: var(--fg); border-color: var(--faint); background: color-mix(in srgb, var(--faint) 16%, transparent); }
+  details > summary { list-style: none; } details > summary::-webkit-details-marker { display: none; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 12.5px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.on { opacity: 1; }
+  footer { margin-top: 18px; color: var(--faint); font-size: 11.5px; display: flex; gap: 14px; flex-wrap: wrap; }
+  @media (max-width: 1250px) { .hero { grid-template-columns: repeat(3, minmax(0, 1fr)); } .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 700px) { .hero { grid-template-columns: repeat(2, minmax(0, 1fr)); } .focus, .minis { grid-template-columns: 1fr; } body { padding: 14px; } }
+</style></head>
+<body>
+<header class="top">
+  <div><div class="hello" id="hello"></div><div class="sub" id="today"></div></div>
+  <div class="pills" id="pills"></div>
+  <div class="seg" id="prio" title="Which priority the backlog panels show: Focus, open items, burndown and the dependency graph. P0, P1 and P2 are board tags."></div>
+  <button id="refresh" title="Fetch everything again now">Refresh</button>
+</header>
+
+<section class="hero" id="hero"></section>
+
+<div class="grid">
+  <div class="col">
+    <div class="card">
+      <div class="head"><h2>Focus</h2><span class="muted" id="focusSub"></span></div>
+      <div class="focus" id="focus"></div>
+    </div>
+    <div class="card">
+      <div class="head"><h2 id="p0Title">Open P0 items</h2><span class="muted" id="p0Sub"></span></div>
+      <div class="twrap" id="p0list"><div class="empty">loading…</div></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card">
+      <div class="head"><h2 id="feedTitle">Since yesterday</h2>
+        <div class="right"><div class="seg" id="feedWin"><button data-v="day" class="on">Last working day</button><button data-v="week">7 days</button></div></div></div>
+      <div class="legend" id="feedFilter" style="margin-bottom:8px"></div>
+      <div id="feed" style="max-height:460px;overflow:auto"><div class="empty">loading…</div></div>
+    </div>
+    <div class="card">
+      <div class="head"><h2>Pull requests</h2><span class="right muted" id="prSub"></span></div>
+      <div id="prs"><div class="empty">loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<section class="card wide">
+  <div class="head"><h2>Dependencies</h2>
+    <div class="right">
+      <div class="legend" id="gLegend"></div>
+    </div></div>
+  <p class="hint" style="margin:0 0 8px">Arrows run left to right: a box can't finish until everything pointing into it is done. Dashed: only one acceptance criterion waits. Hover a box to light up its chain; click to open it in Azure Boards. <span id="gScope"></span></p>
+  <div class="gbox" id="gbox"><svg id="g"></svg><div class="ctip" id="gTip"></div></div>
+  <div id="newItems"></div>
+</section>
+
+<div class="grid" style="margin-top:14px">
+  <div class="col">
+    <div class="card">
+      <div class="head"><h2>Burndown and forecast</h2>
+        <div class="right"><div class="seg" id="bdView"><button data-v="open" class="on">Open items</button><button data-v="week">Per week</button></div></div></div>
+      <div class="minis" id="bdMinis"></div>
+      <div class="legend" id="bdLegend" style="margin-bottom:6px"></div>
+      <div class="chart" id="bdBox"><svg id="bd"></svg><div class="ctip" id="bdTip"></div></div>
+      <p class="hint" id="bdHint"></p>
+    </div>
+    <div class="card">
+      <div class="head"><h2 id="tpTitle">Completed PRs per week</h2><span class="right muted" id="tpSub"></span></div>
+      <div class="minis" id="tpMinis"></div>
+      <div class="legend" id="tpLegend" style="margin-bottom:6px"></div>
+      <div class="chart" id="tpBox"><svg id="tp"></svg><div class="ctip" id="tpTip"></div></div>
+      <p class="hint" id="tpHint"></p>
+    </div>
+    <div class="card">
+      <div class="head"><h2>Waiting on people</h2><span class="muted" id="pplSub"></span></div>
+      <div class="legend" id="pplFilter" style="margin:-4px 0 8px;gap:6px"></div>
+      <div id="people"><div class="empty">loading…</div></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card">
+      <div class="head"><h2 id="driftTitle">Branch drift</h2><span class="right muted" id="driftSub"></span></div>
+      <div id="drift"><div class="empty">loading…</div></div>
+    </div>
+    <div class="card">
+      <div class="head"><h2>Board hygiene</h2><span class="muted" id="hySub"></span></div>
+      <div id="hygiene"><div class="empty">loading…</div></div>
+    </div>
+    <div class="card">
+      <div class="head"><h2>Docker</h2><span class="right muted" id="dkSub"></span></div>
+      <div id="docker"><div class="empty">loading…</div></div>
+    </div>
+    <div class="card">
+      <div class="head"><h2>Local sites</h2><span class="right muted" id="siteSub"></span></div>
+      <div id="sites"><div class="empty">loading…</div></div>
+    </div>
+    <div class="card">
+      <div class="head"><h2>This machine</h2><span class="right muted" id="mSub"></span></div>
+      <div id="machine"><div class="empty">loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<section class="card wide">
+  <div class="head"><h2>Worktrees</h2><span class="muted" id="wtSub"></span>
+    <div class="right"><button id="copyClean" disabled>Copy clean-up commands</button></div></div>
+  <div class="twrap" id="worktrees"><div class="empty">loading…</div></div>
+</section>
+
+<footer><span id="foot"></span><span>Served by <code>node server.js</code> on this machine only</span></footer>
+<div class="toast" id="toast"></div>
+
+<script src="/backlog-data.js"></script>
+<script>
+// ===================================================================== helpers
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const DAY = 864e5, toT = s => Date.parse(s + 'T00:00:00Z');
+const todayT = () => toT(new Date().toLocaleDateString('sv-SE'));
+const fmt = t => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+const fmtB = b => b == null ? '–' : b >= 1e9 ? (b / 1e9).toFixed(b >= 1e10 ? 0 : 1) + ' GB' : b >= 1e6 ? Math.round(b / 1e6) + ' MB' : Math.round(b / 1e3) + ' kB';
+const ago = d => { const s = (Date.now() - new Date(d)) / 1000; if (!isFinite(s)) return ''; if (s < 90) return 'just now'; if (s < 5400) return Math.round(s / 60) + ' min ago'; if (s < 129600) return Math.round(s / 3600) + ' h ago'; return Math.round(s / 86400) + ' d ago'; };
+let CONF = {}; // display settings from config.json, via /api/config
+const wi = id => CONF.workItemUrl ? CONF.workItemUrl + id : '#';
+const errHtml = e => `<span class="err" title="${esc(e.message)}">${{ off: 'not set up: see config.json', auth: 'az login expired — run az login', timeout: 'timed out', missing: 'tool not found', down: 'Docker is not running' }[e.kind] || 'failed'}</span>`;
+const initials = n => String(n).split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+const hue = n => [...String(n)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+const avatar = n => n ? `<span class="who" title="${esc(n)}" style="background:hsl(${hue(n)} 55% 46%)">${esc(initials(n))}</span>` : '';
+function spark(vals, w, h, color, { fill = true, max } = {}) {
+  if (vals.length < 2) return `<svg class="spark" width="${w}" height="${h}"></svg>`;
+  const mx = max ?? Math.max(...vals, 1e-9), mn = max != null ? 0 : Math.min(...vals), r = mx - mn || 1;
+  const pts = vals.map((v, i) => [i / (vals.length - 1) * w, h - 2 - (v - mn) / r * (h - 4)]);
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join('');
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${fill ? `<path d="${d}L${w},${h}L0,${h}Z" style="fill:${color};opacity:.13"/>` : ''}<path d="${d}" fill="none" style="stroke:${color}" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+}
+const meter = parts => `<div class="meter">${parts.map(([f, c]) => `<i style="width:${Math.max(0, Math.min(100, f * 100)).toFixed(1)}%;background:${c}"></i>`).join('')}</div>`;
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => el.classList.remove('on'), 2200); }
+// POSTs carry X-Dashboard so the server can refuse writes that don't come from this page
+async function getJson(url, opt) { if (opt?.method === 'POST') opt = { ...opt, headers: { ...opt.headers, 'X-Dashboard': '1' } }; const r = await fetch(url, opt); return r.json(); }
+function place(tip, box, e) {
+  tip.style.display = 'block';
+  const r = box.getBoundingClientRect();
+  let x = e.clientX - r.left + box.scrollLeft + 14, y = e.clientY - r.top + box.scrollTop + 14;
+  if (x + tip.offsetWidth > box.scrollLeft + box.clientWidth) x -= tip.offsetWidth + 28;
+  if (y + tip.offsetHeight > box.scrollTop + box.clientHeight + 30) y -= tip.offsetHeight + 28;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+const niceStep = v => { const p = 10 ** Math.floor(Math.log10(Math.max(v, 1e-9))); return [1, 2, 2.5, 5, 10].map(m => m * p).find(s => s >= v); };
+
+const S = { backlog: null, prs: null, wt: null, docker: null, local: null, tp: null };
+
+// ===================================================================== header
+function renderHeader() {
+  const h = new Date().getHours();
+  $('hello').innerHTML = `${h < 6 ? 'Working late' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'}${CONF.name ? ', ' + esc(CONF.name) : ''} <span class="wave">👋</span>`;
+  $('today').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + ' · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const pill = (ok, label, title) => `<span class="pill" ${title ? `title="${esc(title)}"` : ''}><span class="dot ${ok === true ? 'ok live' : ok === false ? 'bad' : ''}"></span>${label}</span>`;
+  const azErr = [S.backlog, S.prs].find(x => x?.error)?.error;
+  const dk = S.docker;
+  $('pills').innerHTML = [
+    pill(S.backlog ? !azErr : null, azErr ? (azErr.kind === 'auth' ? 'az login expired' : 'Azure DevOps: ' + azErr.kind) : 'Azure DevOps', azErr?.message),
+    pill(dk ? !dk.error : null, dk?.error ? 'Docker down' : 'Docker', dk?.error?.message),
+    pill(S.local ? S.local.sites.some(s => s.up) : null, 'IIS'),
+  ].join('');
+}
+setInterval(renderHeader, 30000);
+
+// ===================================================================== backlog model
+let BL = null; // computed backlog
+// priority = the p0/p1/p2 tag on the board ('-' = none). The tag stays on Done items, so it also covers the history.
+const PRIOS = [['p0', 'P0'], ['p1', 'P1'], ['p2', 'P2'], ['-', 'Untagged'], ['all', 'All']];
+const prioOf = i => ((i.tags || '').split(/;\s*/).find(t => /^p\d$/i.test(t)) || '-').toLowerCase();
+const prioLabel = p => p === '-' ? 'untagged' : p === 'all' ? 'all' : p.toUpperCase();
+let prio = (() => { try { const v = localStorage.getItem('prio'); return PRIOS.some(([k]) => k === v) ? v : 'p0'; } catch { return 'p0'; } })();
+const inPrio = i => prio === 'all' || i.phase === prio;
+function buildBacklog(data) {
+  const live = new Map(data.items.map(i => [i.id, i]));
+  for (const i of live.values()) i.phase = prioOf(i);
+  const closedState = s => s === 'Done' || s === 'Removed';
+  // dependency graph: curated rows, minus whatever the board says is finished
+  const items = new Map();
+  for (const r of N) {
+    const l = live.get(r[0]);
+    if (l && closedState(l.state)) continue;
+    const ov = r[5] || (l?.state === 'Blocked' ? 'blocked' : l && /Committed|In Progress/.test(l.state) ? 'active' : '');
+    items.set(r[0], { id: r[0], code: r[1], title: r[2], phase: l ? l.phase : r[3], who: l?.who || r[4], ov, note: r[6] || '', ext: r[7] || '', state: l?.state, preds: [], succs: [] });
+  }
+  // open board items without a row join the graph on their own, without links: a row is only needed to draw edges
+  const build = data.items.filter(i => i.state !== 'Removed');
+  const newOpen = build.filter(i => !closedState(i.state) && !N.some(r => r[0] === i.id));
+  for (const l of newOpen) {
+    const m = l.title.match(/^(PBI-\S+)\s*[—–-]\s*(.*)$/);
+    items.set(l.id, { id: l.id, code: m ? m[1] : `${l.type === 'Bug' ? 'Bug' : 'PBI'} #${l.id}`, title: m ? m[2] : l.title, phase: l.phase, who: l.who,
+      ov: l.state === 'Blocked' ? 'blocked' : /Committed|In Progress/.test(l.state) ? 'active' : '', note: '', ext: '', state: l.state, preds: [], succs: [], auto: true });
+  }
+  const edges = E.filter(([a, b]) => items.has(a) && items.has(b));
+  for (const [a, b, p] of edges) { items.get(a).succs.push({ id: b, p: !!p }); items.get(b).preds.push({ id: a, p: !!p }); }
+  for (const it of items.values()) it.status = it.ov || (it.preds.some(x => !x.p && items.get(x.id).ov !== 'close') ? 'waiting' : 'ready');
+  const closure = (id, dir, onlyHard) => { const seen = new Set(), st = [id]; while (st.length) { const c = st.pop(); for (const x of items.get(c)[dir]) if ((!onlyHard || !x.p) && !seen.has(x.id)) { seen.add(x.id); st.push(x.id); } } return seen; };
+  for (const it of items.values()) it.down = closure(it.id, 'succs', true).size;
+  // burndown series: everything, and per priority tag
+  const doneOn = i => i.state === 'Done' ? (i.closed || i.changed?.slice(0, 10) || i.created) : '';
+  const tSnap = toT(data.snap), t0 = Math.min(...build.map(i => toT(i.created))), nDays = (tSnap - t0) / DAY + 1;
+  const wFrom = Math.max(typeof PACE_FROM === 'string' && PACE_FROM ? (toT(PACE_FROM) - t0) / DAY + 1 : 0, nDays - 28), wLen = nDays - wFrom;
+  const sum = (a, f, n) => a.slice(f, f + n).reduce((s, v) => s + v, 0);
+  const series = list => {
+    const added = Array(nDays).fill(0), closed = Array(nDays).fill(0), openAt = [];
+    for (const i of list) { added[Math.max(0, (toT(i.created) - t0) / DAY)]++; const x = doneOn(i); if (x) closed[Math.min(nDays - 1, Math.max(0, (toT(x) - t0) / DAY))]++; }
+    for (let i = 0, o = 0; i < nDays; i++) openAt.push(o += added[i] - closed[i]);
+    const openNow = openAt[nDays - 1];
+    const forecast = withScope => {
+      let seed = 42; const rnd = () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+      const runs = [];
+      for (let k = 0; k < 5000; k++) { let rem = openNow, d = 0; while (rem > 0 && d < 730) { const i = wFrom + Math.floor(rnd() * wLen); rem -= closed[i] - (withScope ? added[i] : 0); d++; } runs.push(d); }
+      runs.sort((a, b) => a - b); const q = p => runs[Math.floor(p * (runs.length - 1))];
+      return { p50: tSnap + q(.5) * DAY, p85: tSnap + q(.85) * DAY, never: q(.85) >= 730 };
+    };
+    return { added, closed, openAt, openNow, fGrow: forecast(true), fFrozen: forecast(false),
+      closedThisWeek: sum(closed, nDays - ((new Date(tSnap).getUTCDay() + 6) % 7) - 1, 7) };
+  };
+  const SER = Object.fromEntries(PRIOS.map(([p]) => [p, series(p === 'all' ? build : build.filter(i => i.phase === p))]));
+  const all = [...items.values()];
+  const open = build.filter(i => !closedState(i.state));
+  const openBy = Object.fromEntries(PRIOS.map(([p]) => [p, p === 'all' ? open : open.filter(i => i.phase === p)]));
+  BL = { live, items, edges, all, closure, newOpen, openBy, p0Open: openBy.p0, t0, tSnap, nDays, wLen, perWeek: a => sum(a, wFrom, wLen) / wLen * 7,
+    SER, ...SER.all, at: data.at };
+}
+
+// ===================================================================== hero
+const range = f => f.never ? 'not at this pace' : `${fmt(f.p50)} – ${fmt(f.p85)}`;
+function renderHero() {
+  const k = [];
+  const card = (cls, key, v, d, extra = '') => `<div class="kpi ${cls}"><div class="k">${key}</div><div class="v">${v}</div>${extra}<div class="d">${d}</div></div>`;
+  // milestones
+  for (const m of MILESTONES) {
+    const days = Math.round((toT(m.date) - todayT()) / DAY);
+    let d = esc(m.name), cls = days <= 10 ? 'hot' : '';
+    if (m.id && BL) { const l = BL.live.get(m.id), it = BL.items.get(m.id);
+      d = `<a href="${wi(m.id)}" target="_blank">${esc(it?.code || '#' + m.id)}</a> ${esc(l?.state || '')}${l?.who ? ' · ' + esc(l.who) : ' · <b style="color:var(--warning)">unassigned</b>'}`; }
+    if (m.code === 'P0' && BL) { const p = BL.SER.p0, f = p.fGrow, late = f.p85 > toT(m.date); cls = f.never || f.p50 > toT(m.date) ? 'bad' : late ? 'hot' : 'good';
+      d = `<span title="Items tagged p0 on the board, at the pace P0 items were closed and added in the last ${BL.wLen} days. Counts items, not size; items that must finish one after another can still make it later.">${p.openNow} P0 items open · at the P0 pace: ${range(f)}</span>`; }
+    k.push(card(cls, `${m.code} · ${fmt(toT(m.date))}${m.soft ? ' (target)' : ''}`, days >= 0 ? `${days} <small>day${days === 1 ? '' : 's'} left</small>` : `${-days} <small>days ago</small>`, d));
+  }
+  if (BL) {
+    const rdy = BL.all.filter(i => i.status === 'ready'), p0 = rdy.filter(i => i.phase === 'p0'), top = [...p0].sort((a, b) => b.down - a.down)[0];
+    k.push(card('', 'Ready to start', `${rdy.length} <small>items</small>`, `${p0.length} of them P0${top ? ` · most unblocking: <a href="${wi(top.id)}" target="_blank">${esc(top.code)}</a> (${top.down})` : ''}`));
+  } else k.push(card('', 'Ready to start', '…', S.backlog?.error ? errHtml(S.backlog.error) : 'loading'));
+  if (BL) {
+    const last30 = BL.openAt.slice(-30);
+    k.push(card('', 'Backlog', `${BL.openNow} <small>open</small>`, `${BL.closedThisWeek} closed this week · ${BL.perWeek(BL.closed).toFixed(0)}/wk pace`, spark(last30, 70, 28, 'var(--info)')));
+  } else k.push(card('', 'Backlog', '…', S.backlog?.error ? errHtml(S.backlog.error) : 'loading'));
+  if (S.prs && !S.prs.error) {
+    const mine = S.prs.active.filter(p => p.mine), toReview = S.prs.active.filter(p => prGroup(p) === 'review'), recheck = S.prs.active.filter(p => prGroup(p) === 'recheck');
+    const conflicts = mine.filter(p => p.merge === 'conflicts').length, toAnswer = S.prs.active.reduce((n, p) => n + (p.comments?.you || 0), 0);
+    k.push(card(toReview.length || recheck.length || toAnswer ? 'hot' : '', 'Pull requests', `${toReview.length} <small>for you to review</small>`, `${recheck.length ? `<b style="color:var(--info)">${recheck.length} to re-check</b> · ` : ''}${mine.length} of mine open${toAnswer ? ` · <b style="color:var(--warning)">${toAnswer} comment${toAnswer > 1 ? 's' : ''} to answer</b>` : ''}${conflicts ? ` · <b style="color:var(--danger)">${conflicts} with conflicts</b>` : ''}`));
+  } else k.push(card('', 'Pull requests', '…', S.prs?.error ? errHtml(S.prs.error) : 'loading'));
+  if (S.docker && !S.docker.error) {
+    const run = S.docker.containers.filter(c => c.state === 'running'), mem = run.reduce((t, c) => t + (c.mem || 0), 0);
+    const total = S.docker.containers.map(c => c.hist.map(h => h[2])); const len = Math.max(0, ...total.map(a => a.length));
+    const memSeries = Array.from({ length: len }, (_, i) => total.reduce((t, a) => t + (a[a.length - len + i] || 0), 0));
+    k.push(card(run.length < S.docker.containers.length ? 'hot' : '', 'Docker', `${run.length}<small>/${S.docker.containers.length} running</small>`, `${fmtB(mem)} in use${S.local ? ` · VM ${fmtB(S.local.vm)}` : ''}`, spark(memSeries, 70, 28, 'var(--accent)')));
+  } else k.push(card(S.docker?.error ? 'bad' : '', 'Docker', S.docker?.error ? 'down' : '…', S.docker?.error ? errHtml(S.docker.error) : 'loading'));
+  if (S.local) { const up = S.local.sites.filter(s => s.up).length;
+    k.push(card(up < S.local.sites.length ? 'hot' : 'good', 'Local IIS', `${up}<small>/${S.local.sites.length} answering</small>`, S.local.sites.filter(s => !s.up).map(s => s.name).join(', ') || 'every site answers'));
+  } else k.push(card('', 'Local IIS', '…', 'loading'));
+  $('hero').innerHTML = k.join('');
+}
+
+// ===================================================================== focus
+const ST = {
+  active: { label: 'In progress', color: 'var(--info)', glyph: '▶' }, ready: { label: 'Ready to start', color: 'var(--success)', glyph: '✓' },
+  waiting: { label: 'Waiting on other PBIs', color: 'var(--faint)', glyph: '…' }, blocked: { label: 'Blocked', color: 'var(--danger)', glyph: '!' },
+  close: { label: 'Should be closed', color: 'var(--warning)', glyph: '×' },
+};
+const prank = new Proxy({ p0: 0, '-': 1, p1: 2, p2: 3 }, { get: (o, k) => o[k] ?? 9 });
+function renderFocus() {
+  if (!BL) { $('focus').innerHTML = S.backlog?.error ? errHtml(S.backlog.error) : '<div class="empty">loading…</div>'; return; }
+  const row = (i, right, btn = '') => `<div class="row"><div class="main"><div class="t"><a class="code" href="${wi(i.id)}" target="_blank">${esc(i.code)}</a> <span>${esc(i.title)}</span></div>
+    <div class="s">${right}</div></div>${btn}${avatar(i.who)}</div>`;
+  const by = (a, b) => prank[a.phase] - prank[b.phase] || b.down - a.down || a.id - b.id;
+  const vis = BL.all.filter(inPrio);
+  const act = vis.filter(i => i.status === 'active').sort(by), rdy = vis.filter(i => i.status === 'ready').sort(by), blk = vis.filter(i => i.status === 'blocked' || i.status === 'close').sort(by);
+  const col = (title, list, fn, n) => `<div><h3>${title} <span class="faint">${list.length}</span></h3><div class="rows">${list.slice(0, n).map(fn).join('') || '<div class="empty">none</div>'}</div>${list.length > n ? `<div class="faint" style="font-size:12px;padding-top:6px">and ${list.length - n} more in the graph below</div>` : ''}</div>`;
+  $('focus').innerHTML =
+    col('In progress', act, i => row(i, `${i.who ? esc(i.who) + ' · ' : ''}holds ${i.down}`), 6) +
+    col('Up next: ready, most unblocking first', rdy, i => row(i, `${i.phase === '-' ? 'untagged' : i.phase.toUpperCase()} · unblocks ${i.down}${i.note ? ' · ' + esc(i.note) : ''}`, workButton(i)), 6) +
+    col('Blocked', blk, i => row(i, `<span style="color:var(--danger)">${ST[i.status].glyph}</span> ${esc(i.note)}`), 6);
+  $('focusSub').textContent = `${vis.length} open ${prio === 'all' ? '' : prioLabel(prio) + ' '}item${vis.length === 1 ? '' : 's'} in the graph · ${vis.filter(i => i.status === 'waiting').length} waiting on others`;
+}
+
+// ===================================================================== start work on a PBI
+// A new T3 Code thread in a new worktree from the team branch, for an open item that is unassigned or yours and has no thread yet
+// (see README). An item whose thread title names it ("#<id>" or "PBI <id>") shows that thread instead.
+function workButton(i) {
+  const w = S.prs?.work, l = BL?.live.get(i.id); if (!w?.available || !l) return '';
+  const th = w.threads?.[i.id], st = w.started?.[i.id];
+  if (th) return `<span class="chip info prp" title="T3 Code thread: ${esc(th.title)}">in T3</span>`;
+  if (st) return `<span class="chip ok prp" title="${esc(st.branch)}">started ${ago(st.at)}</span>`;
+  if (/^(Done|Removed)$/.test(l.state) || (l.who && !l.mine)) return '';
+  return `<button class="prp go" onclick="startWork(${i.id}, this)" title="Start a T3 Code thread for it in a new worktree from ${esc(CONF.team || 'the team branch')}">Start work</button>`;
+}
+async function startWork(id, btn) {
+  const l = BL.live.get(id), it = BL.items.get(id);
+  const waits = (it?.preds || []).map(p => BL.items.get(p.id)).filter(Boolean).map(p => `${p.code} ${p.title}`);
+  const wait = waits.length ? `\n\nIt still waits on:\n${waits.map(w => '- ' + w).join('\n')}` : '';
+  if (!confirm(`Start #${id} "${l.title}" in a new T3 Code thread?\n\nIt gets a new worktree from ${CONF.team || 'the team branch'} on its own feature branch, assigns the item to you and sets it to Committed, and sends you a plan before it writes any code.${wait}`)) return;
+  btn.disabled = true; btn.textContent = 'Starting…';
+  const r = await getJson(`/api/start-work/${id}`, { method: 'POST' }).catch(e => ({ error: e.message }));
+  toast(r.ok ? `Started on ${r.branch}: the thread shows up in T3 Code.` : `Failed: ${r.error?.message || r.error}`);
+  await loadPrs(true);
+}
+
+// ===================================================================== open items of the chosen priority (P0: same set as the P0 milestone count)
+const p0Rank = s => ['In Progress', 'Committed', 'Blocked', 'Approved', 'New'].indexOf(s) >>> 0;
+// the work in progress first; the rest behind a button
+let openAll = false;
+const OPEN_TOP = 12;
+function renderP0() {
+  const what = prio === 'all' ? '' : prio === '-' ? 'untagged ' : prioLabel(prio) + ' ';
+  $('p0Title').textContent = prio === 'all' ? 'All open items' : `Open ${what}items`;
+  if (!BL) { $('p0list').innerHTML = S.backlog?.error ? errHtml(S.backlog.error) : '<div class="empty">loading…</div>'; return; }
+  const list = [...BL.openBy[prio]].sort((a, b) => p0Rank(a.state) - p0Rank(b.state) || prank[a.phase] - prank[b.phase] || a.id - b.id);
+  const byState = list.reduce((m, i) => m.set(i.state, (m.get(i.state) || 0) + 1), new Map());
+  $('p0Sub').textContent = `${list.length} open` + [...byState].map(([s, n]) => ` · ${n} ${s}`).join('');
+  const more = list.length - OPEN_TOP;
+  $('p0list').innerHTML = list.length ? `<table><thead><tr><th>Item</th><th>Title</th>${prio === 'all' ? '<th>Priority</th>' : ''}<th>State</th><th>Graph</th><th>Assigned</th><th></th></tr></thead><tbody>${list.slice(0, openAll ? list.length : OPEN_TOP).map(i => {
+    const g = BL.items.get(i.id)?.status;
+    return `<tr><td>${itemLink(i.id)}</td><td>${esc(i.title.replace(/^PBI-\S+\s+—\s+/, ''))}</td>${prio === 'all' ? `<td>${i.phase === '-' ? '<span class="faint">none</span>' : i.phase.toUpperCase()}</td>` : ''}<td>${esc(i.state)}</td>
+      <td class="nw">${g ? `<span style="color:${ST[g].color}">${ST[g].glyph} ${ST[g].label}</span>` : '<span class="faint">not in graph</span>'}</td><td class="nw">${esc(i.who || '')}</td><td class="num">${workButton(i)}</td></tr>`; }).join('')}</tbody></table>`
+      + (more > 0 ? `<button style="margin-top:8px" onclick="openAll = !openAll; renderP0()">${openAll ? 'Show the first ' + OPEN_TOP : `Show all ${list.length}`}</button>` : '')
+    : `<div class="empty">no open ${what}items</div>`;
+}
+
+// ===================================================================== priority switch (header): drives Focus, open items, burndown and the graph
+function renderPrio() {
+  $('prio').innerHTML = PRIOS.map(([p, l]) => `<button data-v="${p}" class="${p === prio ? 'on' : ''}">${l}${BL ? ` <span class="faint">${BL.openBy[p].length}</span>` : ''}</button>`).join('');
+}
+$('prio').onclick = e => { const b = e.target.closest('button'); if (!b) return; prio = b.dataset.v; try { localStorage.setItem('prio', prio); } catch {}
+  renderPrio(); renderFocus(); renderP0(); renderBurndown(); drawGraph(); };
+
+// ===================================================================== burndown
+const C_OPEN = 'var(--info)', C_FROZEN = 'var(--muted)', C_ADD = 'color-mix(in srgb, var(--muted) 55%, var(--card))';
+const sw = (c, dash) => `<svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" style="stroke:${c}" stroke-width="2"${dash ? ` stroke-dasharray="${dash}"` : ''}/></svg>`;
+const sq = c => `<span class="dot" style="border-radius:2px;background:${c}"></span>`;
+let bdView = 'open';
+const bdData = () => ({ ...BL, ...BL.SER[prio] });
+function renderBurndown() {
+  if (!BL) { $('bdMinis').innerHTML = ''; return; }
+  const D = bdData(), what = prio === 'all' ? 'all' : prioLabel(prio);
+  if (!D.added.some(Boolean)) { $('bdMinis').innerHTML = $('bdLegend').innerHTML = $('bd').innerHTML = ''; $('bd').setAttribute('height', 0);
+    $('bdHint').textContent = `Nothing is tagged ${prio} on the board yet.`; return; }
+  $('bdMinis').innerHTML = [
+    [BL.perWeek(D.closed).toFixed(1), `closed per week (last ${BL.wLen} days)`], [BL.perWeek(D.added).toFixed(1), 'added per week'],
+    [range(D.fGrow), `${what} closed, items keep coming`], [range(D.fFrozen), `${what} closed, nothing new added`],
+  ].map(([v, l]) => `<div class="mini"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+  $('bdLegend').innerHTML = bdView === 'open'
+    ? `<span>${sw(C_OPEN)}Open items</span><span>${sw(C_OPEN, '6 4')}Forecast, items keep coming</span><span>${sq('color-mix(in srgb, var(--info) 18%, transparent)')}50–85% of runs</span><span>${sw(C_FROZEN, '2 3')}Forecast, nothing new</span>`
+    : `<span>${sq(C_OPEN)}Closed</span><span>${sq(C_ADD)}Added</span>`;
+  $('bdHint').textContent = bdView === 'open'
+    ? `Monte Carlo: replays random days from the last ${BL.wLen} days 5,000 times until nothing is open; half the runs finish by the first date, 85% by the second. Counts items, not size. ${prio === 'all' ? `Every PBI and bug, whatever its priority (${D.openNow} open).` : prio === '-' ? `Only items without a p0, p1 or p2 tag (${D.openNow} open), at the pace those were closed and added. Most of the closed ones are from before the tags were used.` : `Only items tagged ${prio} on the board (${D.openNow} open), at the pace ${what} items were closed and added.`} Removed items are left out.`
+    : 'Items closed and added per week (Monday to Sunday). The week of the backlog import is clipped; hover for the numbers.';
+  bdView === 'open' ? drawOpen() : drawWeeks();
+}
+function drawOpen() {
+  const { t0, tSnap, nDays, openAt, openNow, added, closed, fGrow, fFrozen } = bdData();
+  const el = $('bd'), box = $('bdBox'), tip = $('bdTip');
+  const Wd = Math.max(520, box.clientWidth), Ht = 260, ML = 36, MR = 18, MT = 20, MB = 24, pw = Wd - ML - MR, ph = Ht - MT - MB;
+  const tEnd = Math.min(tSnap + 180 * DAY, Math.max(tSnap + 14 * DAY, ...[fGrow, fFrozen].map(f => f.never ? tSnap + 90 * DAY : f.p85 + 7 * DAY)));
+  const X = t => ML + (t - t0) / (tEnd - t0) * pw;
+  const mx = Math.max(1, ...openAt), yStep = niceStep(mx / 5), yMax = Math.ceil(mx / yStep) * yStep;
+  const Y = v => MT + ph - v / yMax * ph, base = Y(0);
+  let s = `<defs><clipPath id="bdClip"><rect x="${ML}" y="${MT - 4}" width="${pw}" height="${ph + 4}"/></clipPath></defs>`;
+  for (let v = 0; v <= yMax; v += yStep) s += `<line x1="${ML}" x2="${ML + pw}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--border)" ${v ? 'stroke-dasharray="2 3"' : ''}/><text class="ax" x="${ML - 6}" y="${Y(v) + 3.5}" text-anchor="end">${v}</text>`;
+  const mondays = []; for (let t = t0 + ((8 - new Date(t0).getUTCDay()) % 7) * DAY; t <= tEnd; t += 7 * DAY) mondays.push(t);
+  const every = Math.ceil(mondays.length / Math.max(4, Math.floor(pw / 64)));
+  mondays.forEach((t, k) => { if (k % every === 0) s += `<text class="ax" x="${X(t)}" y="${base + 16}" text-anchor="middle">${fmt(t)}</text>`; });
+  const xs = X(tSnap), ys = Y(openNow);
+  s += `<g clip-path="url(#bdClip)">`;
+  if (!fGrow.never) s += `<path d="M${xs},${ys} L${X(fGrow.p50)},${base} L${X(fGrow.p85)},${base} Z" style="fill:color-mix(in srgb, var(--info) 18%, transparent)"/>`;
+  const fLine = (f, c, dash) => `<line x1="${xs}" y1="${ys}" x2="${X(f.never ? tEnd : f.p50)}" y2="${f.never ? ys : base}" style="stroke:${c}" stroke-width="2" stroke-dasharray="${dash}"/>`;
+  s += fLine(fFrozen, C_FROZEN, '2 3') + fLine(fGrow, C_OPEN, '6 4') + `</g>`;
+  for (const m of MILESTONES) { const x = X(toT(m.date)); if (x > ML && x < ML + pw) s += `<line x1="${x}" x2="${x}" y1="${MT}" y2="${base}" stroke="var(--warning)" stroke-dasharray="3 3" stroke-opacity=".8"/><text class="lbl m" x="${x + 4}" y="${MT + 10}">${m.code}</text>`; }
+  s += `<path d="${openAt.map((v, i) => `${i ? 'L' : 'M'}${X(t0 + i * DAY).toFixed(1)},${Y(v).toFixed(1)}`).join('')}" fill="none" style="stroke:${C_OPEN}" stroke-width="2" stroke-linejoin="round"/>`;
+  s += `<line x1="${xs}" x2="${xs}" y1="${MT - 6}" y2="${base}" stroke="var(--muted)" stroke-opacity=".5"/><text class="lbl m" x="${xs + 4}" y="${MT - 8}">Today, ${openNow} open</text>`;
+  added.forEach((a, i) => { if (a >= 15) s += `<text class="lbl m" x="${X(t0 + i * DAY)}" y="${Y(Math.max(...openAt.slice(Math.max(0, i - 3), i + 4))) - 8}" text-anchor="middle">+${a} added</text>`; });
+  const marks = [];
+  if (!fFrozen.never) marks.push([fFrozen.p50, fmt(fFrozen.p50), 'var(--muted)']);
+  if (!fGrow.never) marks.push([fGrow.p50, fmt(fGrow.p50), C_OPEN], [fGrow.p85, fmt(fGrow.p85) + ' (85%)', C_OPEN]);
+  marks.sort((a, b) => a[0] - b[0]);
+  let lastX = -1e9, lift = 0;
+  for (const [t, txt, c] of marks) { const x = X(t); lift = x - lastX < 62 ? lift + 14 : 0; lastX = x;
+    s += `<circle cx="${x}" cy="${base}" r="4" style="fill:${c}" stroke="var(--card)" stroke-width="2"/><text class="lbl" x="${x}" y="${base - 9 - lift}" text-anchor="middle">${txt}</text>`; }
+  s += `<line id="bdX" y1="${MT}" y2="${base}" stroke="var(--fg)" stroke-opacity=".3" style="display:none"/><circle id="bdDot" r="4" style="fill:${C_OPEN};display:none" stroke="var(--card)" stroke-width="2"/>`;
+  s += `<rect x="${ML}" y="${MT}" width="${pw}" height="${ph}" fill="transparent" id="bdHit"/>`;
+  el.setAttribute('width', Wd); el.setAttribute('height', Ht); el.innerHTML = s;
+  const vx = el.querySelector('#bdX'), vd = el.querySelector('#bdDot');
+  el.querySelector('#bdHit').onmousemove = e => {
+    const px = e.clientX - el.getBoundingClientRect().left;
+    const i = Math.max(0, Math.min(nDays - 1, Math.round(((px - ML) / pw * (tEnd - t0)) / DAY))), x = X(t0 + i * DAY);
+    vx.setAttribute('x1', x); vx.setAttribute('x2', x); vx.style.display = ''; vd.setAttribute('cx', x); vd.setAttribute('cy', Y(openAt[i])); vd.style.display = '';
+    tip.innerHTML = `<b>${fmt(t0 + i * DAY)}</b><br>${openAt[i]} open<br><span class="m">Closed that day:</span> ${closed[i]}<br><span class="m">Added that day:</span> ${added[i]}`;
+    place(tip, box, e);
+  };
+  el.querySelector('#bdHit').onmouseleave = () => { tip.style.display = 'none'; vx.style.display = vd.style.display = 'none'; };
+}
+function drawWeeks() {
+  const { t0, nDays, added, closed, openAt } = bdData();
+  const el = $('bd'), box = $('bdBox'), tip = $('bdTip');
+  const mon = t => t - ((new Date(t).getUTCDay() + 6) % 7) * DAY, w0 = mon(t0), weeks = [];
+  for (let i = 0; i < nDays; i++) { const k = (mon(t0 + i * DAY) - w0) / (7 * DAY); weeks[k] ||= { t: w0 + k * 7 * DAY, c: 0, a: 0, open: 0 }; weeks[k].c += closed[i]; weeks[k].a += added[i]; weeks[k].open = openAt[i]; }
+  const Wd = Math.max(520, box.clientWidth), Ht = 260, ML = 36, MR = 18, MT = 20, MB = 24, pw = Wd - ML - MR, ph = Ht - MT - MB;
+  const vals = weeks.flatMap(w => [w.c, w.a]).sort((a, b) => b - a);
+  const top = Math.max(1, vals[1] && vals[0] > 2 * vals[1] ? vals[1] * 1.25 : vals[0]);
+  const yStep = niceStep(top / 4), yMax = Math.ceil(top / yStep) * yStep;
+  const Y = v => MT + ph - Math.min(v, yMax) / yMax * ph, base = Y(0);
+  const gw = pw / weeks.length, bw = Math.min(24, (gw - 14) / 2);
+  const bar = (x, v, c) => { if (!v) return ''; const y = Y(v), h = base - y, r = Math.min(4, h / 2, bw / 2);
+    let p = `<path d="M${x},${base} V${y + r} Q${x},${y} ${x + r},${y} H${x + bw - r} Q${x + bw},${y} ${x + bw},${y + r} V${base} Z" style="fill:${c}"/>`;
+    if (v > yMax) p += `<path d="M${x - 2},${y + 12} l${bw + 4},-5 M${x - 2},${y + 17} l${bw + 4},-5" stroke="var(--card)" stroke-width="3"/><text class="lbl" x="${x + bw / 2}" y="${y - 4}" text-anchor="middle">${v}</text>`;
+    return p; };
+  let s = '';
+  for (let v = 0; v <= yMax; v += yStep) s += `<line x1="${ML}" x2="${ML + pw}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--border)" ${v ? 'stroke-dasharray="2 3"' : ''}/><text class="ax" x="${ML - 6}" y="${Y(v) + 3.5}" text-anchor="end">${v}</text>`;
+  weeks.forEach((w, k) => { const cx = ML + k * gw + gw / 2;
+    s += bar(cx - bw - 1, w.c, C_OPEN) + bar(cx + 1, w.a, C_ADD) + `<text class="ax" x="${cx}" y="${base + 16}" text-anchor="middle">${fmt(w.t)}${k === weeks.length - 1 ? ' (so far)' : ''}</text>`;
+    s += `<rect class="wkHit" data-k="${k}" x="${ML + k * gw}" y="${MT}" width="${gw}" height="${ph}" fill="transparent"/>`; });
+  el.setAttribute('width', Wd); el.setAttribute('height', Ht); el.innerHTML = s;
+  el.querySelectorAll('.wkHit').forEach(r => { r.onmousemove = e => { const w = weeks[+r.dataset.k];
+    tip.innerHTML = `<b>Week of ${fmt(w.t)}${+r.dataset.k === weeks.length - 1 ? ' (so far)' : ''}</b><br><span class="m">Closed:</span> ${w.c}<br><span class="m">Added:</span> ${w.a}<br><span class="m">Open at the end:</span> ${w.open}`; place(tip, box, e); };
+    r.onmouseleave = () => tip.style.display = 'none'; });
+}
+$('bdView').onclick = e => { const b = e.target.closest('button'); if (!b) return; bdView = b.dataset.v; $('bdView').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); renderBurndown(); };
+
+// ===================================================================== completed PRs per week
+// Ours: into the team branch, or into a feature branch built on it. Release PRs (into Acceptance/Production) promote work that
+// was already merged once, so they're stacked apart from the rest.
+const C_TEAM = 'var(--accent)', C_OTHER = 'color-mix(in srgb, var(--muted) 70%, var(--card))', C_REL = 'color-mix(in srgb, var(--muted) 30%, var(--card))';
+const isRelease = t => /^(Acceptance|Production|Release)$/i.test(t);
+const median = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+function tpWeeks() {
+  const d = S.tp, team = d.team.toLowerCase(), mon = t => t - ((new Date(t).getUTCDay() + 6) % 7) * DAY;
+  const ours = p => p.target.toLowerCase() === team || p.target.toLowerCase().includes(team);
+  const w0 = mon(toT(d.since)), wN = mon(todayT()), weeks = [];
+  for (let t = w0; t <= wN; t += 7 * DAY) weeks.push({ t, team: [], other: [], rel: [], by: {} });
+  for (const p of d.prs) {
+    const w = weeks[(mon(toT(new Date(p.closed).toLocaleDateString('sv-SE'))) - w0) / (7 * DAY)]; if (!w) continue;
+    w[ours(p) ? 'team' : isRelease(p.target) ? 'rel' : 'other'].push(p);
+    if (!ours(p)) w.by[p.target] = (w.by[p.target] || 0) + 1;
+  }
+  return weeks;
+}
+function renderThroughput() {
+  const d = S.tp; if (!d) return;
+  if (d.error) { $('tpMinis').innerHTML = errHtml(d.error); return; }
+  // the last 4 full weeks, but none before the week after our first PR (that one is a partial start)
+  const weeks = tpWeeks(), first = weeks.findIndex(w => w.team.length), sum = k => full.reduce((n, w) => n + w[k].length, 0);
+  const full = weeks.slice(0, -1).slice(Math.max(first + 1, weeks.length - 5)), span = full.length === 1 ? 'last full week' : `last ${full.length} full weeks`;
+  if (!full.length) { $('tpMinis').innerHTML = '<div class="empty">No full week since our first completed PR yet.</div>'; }
+  const days = ps => median(ps.map(p => (new Date(p.closed) - new Date(p.created)) / DAY));
+  const tDays = days(full.flatMap(w => w.team)), oDays = days(full.flatMap(w => w.other));
+  const share = sum('team') / (sum('team') + sum('other') || 1);
+  if (full.length) $('tpMinis').innerHTML = [
+    [(sum('team') / full.length).toFixed(1), `ours per week (into ${esc(d.team)}, ${span})`],
+    [(sum('other') / full.length).toFixed(1), `everyone else per week, plus ${(sum('rel') / full.length).toFixed(1)} release PRs`],
+    [Math.round(share * 100) + '%', 'of the PRs completed in those weeks are ours (release PRs left out)'],
+    [tDays == null ? '–' : tDays.toFixed(1) + ' d', `median from opened to completed, ours (everyone else: ${oDays == null ? '–' : oDays.toFixed(1) + ' d'})`],
+  ].map(([v, l]) => `<div class="mini"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+  $('tpLegend').innerHTML = `<span>${sq(C_TEAM)}Ours (${esc(d.team)})</span><span>${sq(C_OTHER)}Everyone else</span><span>${sq(C_REL)}Release PRs (Acceptance, Production)</span>`;
+  $('tpHint').textContent = `Completed PRs in ${d.repo} by the week they were completed (Monday to Sunday; the last bar is this week so far). Ours are PRs into ${d.team} or into a feature branch built on it. Everyone else is every other target; release PRs are stacked on top because they promote work that was already merged once. Hover for the targets.`;
+  $('tpSub').textContent = 'checked ' + ago(d.at);
+
+  const el = $('tp'), box = $('tpBox'), tip = $('tpTip');
+  const Wd = Math.max(520, box.clientWidth), Ht = 220, ML = 36, MR = 18, MT = 14, MB = 24, pw = Wd - ML - MR, ph = Ht - MT - MB;
+  const top = Math.max(...weeks.flatMap(w => [w.team.length, w.other.length + w.rel.length]), 1);
+  const yStep = niceStep(top / 4), yMax = Math.ceil(top / yStep) * yStep;
+  const Y = v => MT + ph - v / yMax * ph, base = Y(0);
+  const gw = pw / weeks.length, bw = Math.min(22, (gw - 10) / 2);
+  // a bar from v0 to v1, rounded at the top only when it ends the stack
+  const bar = (x, v0, v1, c, round) => { if (v1 <= v0) return ''; const y = Y(v1), yb = Y(v0), r = round ? Math.min(4, (yb - y) / 2, bw / 2) : 0;
+    return `<path d="M${x},${yb} V${y + r} Q${x},${y} ${x + r},${y} H${x + bw - r} Q${x + bw},${y} ${x + bw},${y + r} V${yb} Z" style="fill:${c}"/>`; };
+  const every = Math.ceil(weeks.length / Math.max(4, Math.floor(pw / 64)));
+  let s = '';
+  for (let v = 0; v <= yMax; v += yStep) s += `<line x1="${ML}" x2="${ML + pw}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--border)" ${v ? 'stroke-dasharray="2 3"' : ''}/><text class="ax" x="${ML - 6}" y="${Y(v) + 3.5}" text-anchor="end">${v}</text>`;
+  weeks.forEach((w, k) => { const cx = ML + k * gw + gw / 2, o = w.other.length, r = w.rel.length;
+    s += bar(cx - bw - 1, 0, w.team.length, C_TEAM, true) + bar(cx + 1, 0, o, C_OTHER, !r) + bar(cx + 1, o, o + r, C_REL, true);
+    if ((weeks.length - 1 - k) % every === 0) s += `<text class="ax" x="${cx}" y="${base + 16}" text-anchor="middle">${fmt(w.t)}</text>`;
+    s += `<rect class="tpHit" data-k="${k}" x="${ML + k * gw}" y="${MT}" width="${gw}" height="${ph}" fill="transparent"/>`; });
+  el.setAttribute('width', Wd); el.setAttribute('height', Ht); el.innerHTML = s;
+  el.querySelectorAll('.tpHit').forEach(h => { h.onmousemove = e => { const w = weeks[+h.dataset.k];
+    const by = Object.entries(w.by).sort((a, b) => b[1] - a[1]).map(([t, n]) => `<br><span class="m">into ${esc(t)}:</span> ${n}`).join('');
+    tip.innerHTML = `<b>Week of ${fmt(w.t)}${+h.dataset.k === weeks.length - 1 ? ' (so far)' : ''}</b><br><span class="m">Ours:</span> ${w.team.length}<br><span class="m">Everyone else:</span> ${w.other.length + w.rel.length}${by}`; place(tip, box, e); };
+    h.onmouseleave = () => tip.style.display = 'none'; });
+}
+
+// ===================================================================== pull requests
+const VOTE = { 10: 'approved', 5: 'approved with suggestions', 0: 'no vote yet', '-5': 'waiting for author', '-10': 'rejected' };
+// Someone else's PR is in one group:
+// recheck: you left comments, none still waits on the author, and you haven't approved yet
+// waiting: some of your comments still wait on the author
+// review:  you're a reviewer without a vote, and nobody else reviewed it yet
+// covered: someone other than the author and you voted or left comments, and you haven't, so you leave it to them
+function prGroup(p) {
+  if (p.mine) return 'mine';
+  const c = p.comments?.mine, myVote = p.reviewers.find(r => r.me)?.vote || 0;
+  if (c?.total) return c.waiting ? 'waiting' : myVote >= 5 ? 'done' : 'recheck';
+  if (p.reviewedBy?.length) return 'covered';
+  return p.reviewers.some(r => r.me && r.vote === 0) ? 'review' : 'rest';
+}
+const reviewThread = pr => S.prs?.review?.threads?.[pr.id];
+// the merge confidence from your last review thread, green from the score a re-check approves at
+function scoreChip(pr) {
+  const t = reviewThread(pr), s = t?.score; if (!s) return '';
+  const at = S.prs.review.approveAt || 9, cls = s.value >= at ? 'ok' : s.value >= at - 2 ? 'warn' : 'bad';
+  return `<span class="chip ${cls}" title="Merge confidence from your review in the T3 Code thread &quot;${esc(t.title)}&quot;, ${ago(s.at)}. A re-check approves the PR at ${at}/10 or higher.">confidence ${s.value}/10</span>`;
+}
+// who else reviewed it, and how your own comment threads stand
+function reviewChips(pr) {
+  const by = (pr.reviewedBy || []).map(r => `<span class="chip${r.vote >= 5 ? ' ok' : r.vote < 0 ? ' warn' : ''}" title="${esc(r.name)}: ${VOTE[r.vote] || 'no vote'}${r.threads ? `, started ${r.threads} comment thread${r.threads > 1 ? 's' : ''}` : ''}">${esc(r.name.split(' ')[0])} ${r.vote >= 5 ? 'approved' : r.vote === -5 ? 'waits for author' : r.vote === -10 ? 'rejected' : 'reviewed'}${r.threads ? ` · ${r.threads}` : ''}</span>`).join(' ');
+  const c = pr.comments?.mine;
+  const own = !c?.total ? '' : c.waiting
+    ? `<span class="chip warn" title="Your comment threads still waiting on ${esc(pr.by)}: ${c.resolved} resolved, ${c.answered} answered, ${c.waiting} with you as last word">${c.waiting} of your ${c.total} comments open</span>`
+    : `<span class="chip ok" title="${c.resolved} resolved, ${c.answered} answered by someone else and still open">your ${c.total} comment${c.total > 1 ? 's' : ''} ${c.answered ? 'answered' : 'resolved'}</span>`;
+  return [own, by].filter(Boolean).join(' ');
+}
+// one click starts a T3 Code review thread through the webhook task (see README); a PR someone else already reviewed
+// gets no button, and one whose comments are answered gets Re-check
+function reviewButtons(pr) {
+  const rv = S.prs?.review, g = prGroup(pr), t = reviewThread(pr);
+  if (t?.status === 'running') return `<span class="faint prp" title="T3 Code thread &quot;${esc(t.title)}&quot;">review running</span>`;
+  if (g === 'recheck') {
+    const sent = rv?.rechecks?.[pr.id];
+    return `${sent ? `<span class="faint prp" title="Sent from this dashboard">re-check sent ${ago(sent.at)}</span>` : ''}<button class="prp go" onclick="recheck(${pr.id},this)" title="${t ? `Sends the T3 Code thread &quot;${esc(t.title)}&quot;` : 'Starts a new T3 Code thread with'} a re-check: verify each of your threads on the latest push, rerun the tests and score it. It votes Approve at ${rv?.approveAt || 9}/10 or higher, and posts nothing else.">${sent ? 'Re-check again' : 'Re-check'}</button>`;
+  }
+  if (!rv?.configured || ['covered', 'waiting', 'done'].includes(g)) return '';
+  const started = rv.started?.[pr.id];
+  return `${started ? `<span class="faint prp" title="Started from this dashboard">review started ${ago(started.at)}</span>` : ''}<button class="prp go" onclick="startReview(${pr.id},this)" title="Starts a new T3 Code thread that reviews this PR. Nothing is posted on the PR.">${started ? 'Start again' : 'Start review'}</button>`;
+}
+async function recheck(id, btn) {
+  const at = S.prs.review.approveAt || 9;
+  if (!confirm(`Re-check !${id}?\n\nThe review thread verifies each of your comment threads on the latest push, reruns the tests and gives a merge confidence score. At ${at}/10 or higher it votes Approve on the PR (only the vote). It posts no comments.`)) return;
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const r = await getJson(`/api/recheck/${id}`, { method: 'POST' }).catch(e => ({ error: e.message }));
+  toast(r.ok ? (r.sent ? `Sent to "${r.thread}". It starts when the thread is free.` : `Re-check of !${id} started in a new T3 Code thread.`) : `Failed: ${r.error?.message || r.error}`);
+  await loadPrs(true);
+}
+async function startReview(id, btn) {
+  if (!confirm(`Start a review of !${id} in a new T3 Code thread?`)) return;
+  btn.disabled = true; btn.textContent = 'Starting…';
+  const r = await getJson(`/api/review/${id}`, { method: 'POST' }).catch(e => ({ error: e.message }));
+  toast(r.ok ? `Review of !${id} started: the thread shows up in T3 Code within a few seconds.` : `Failed: ${r.error?.message || r.error}`);
+  await loadPrs(true);
+}
+// open comment threads waiting on you
+const commentChip = pr => pr.comments?.you ? `<span class="chip warn" title="${pr.mine ? 'Open threads where a reviewer had the last word' : 'Threads you started where the author answered'}">${pr.comments.you} to answer</span>` : '';
+// your PRs: one click hands work to the T3 Code thread linked to the PR (see README). Comments waiting on you come
+// first; once someone approved, Finish merges, sets the PBIs to Done and cleans up
+const THREAD_ACTIONS = {
+  fix: { label: 'Fix comments', again: 'Send again', sent: 'fix sent', url: 'fix-comments',
+    does: 'It fixes them, pushes, replies on each comment and resolves it.', ask: id => `Send the open comments on !${id}` },
+  finish: { label: 'Finish', again: 'Finish again', sent: 'finish sent', url: 'finish', cls: ' fin',
+    does: 'It checks the policies, squash-merges, builds on the target, sets the work items to Done when their acceptance criteria are met, and removes the worktree, containers and branch this PR used.', ask: id => `Finish !${id}: send it` },
+};
+function threadButtons(pr) {
+  const t = S.prs?.thread, th = t?.threads?.[pr.id];
+  const kind = pr.comments?.you ? 'fix' : t?.finishable?.includes(pr.id) ? 'finish' : null;
+  if (!kind || !th) return '';
+  const a = THREAD_ACTIONS[kind], sent = t.sent?.[kind]?.[pr.id];
+  const open = kind === 'finish' && pr.comments?.open;
+  const title = open ? `${pr.comments.open} comment${open > 1 ? 's are' : ' is'} still open. ${pr.target} merges only when every comment is resolved.` : `Sends this to the T3 Code thread &quot;${esc(th.title)}&quot;. ${a.does}`;
+  return `${sent ? `<span class="faint prp" title="Sent from this dashboard">${a.sent} ${ago(sent.at)}</span>` : ''}<button class="prp go${a.cls || ''}" ${open ? 'disabled' : ''} onclick="sendToThread('${kind}',${pr.id},this)" title="${title}">${sent ? a.again : a.label}</button>`;
+}
+async function sendToThread(kind, id, btn) {
+  const a = THREAD_ACTIONS[kind], th = S.prs.thread.threads[id];
+  if (!confirm(`${a.ask(id)} to the T3 Code thread "${th.title}"?\n\n${a.does}`)) return;
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const r = await getJson(`/api/${a.url}/${id}`, { method: 'POST' }).catch(e => ({ error: e.message }));
+  toast(r.ok ? `Sent to "${r.thread}". It starts when the thread is free.` : `Failed: ${r.error?.message || r.error}`);
+  await loadPrs(true);
+}
+let prOldOpen = false;
+function renderPrs() {
+  const p = S.prs;
+  if (!p) return; if (p.error) { $('prs').innerHTML = errHtml(p.error); return; }
+  const row = pr => {
+    const people = pr.reviewers.filter(r => !r.group || r.vote);
+    const chips = [pr.draft && '<span class="chip">draft</span>', pr.merge === 'conflicts' && '<span class="chip bad">conflicts</span>', pr.merge === 'failure' && '<span class="chip bad">merge failed</span>',
+      people.some(r => r.vote === -10) && '<span class="chip bad">rejected</span>', people.some(r => r.vote === -5) && '<span class="chip warn">waiting for author</span>',
+      people.filter(r => r.vote >= 5).length >= 2 && '<span class="chip ok">2+ approvals</span>'].filter(Boolean).join(' ');
+    const pb = (pr.workItems || []).map(id => { const c = BL?.live.get(id)?.title.match(/^PBI-\w+/)?.[0]; return `<a class="chip" href="${wi(id)}" target="_blank">${esc(c || '#' + id)}</a>`; }).join(' ');
+    return `<div class="row"><div class="main"><div class="t"><a href="${pr.url}" target="_blank"><span class="code">!${pr.id}</span> ${esc(pr.title)}</a></div>
+      <div class="s">${esc(pr.repo)} → <span class="mono">${esc(pr.target)}</span> · ${pr.mine ? '' : esc(pr.by) + ' · '}${ago(pr.created)} ${commentChip(pr)} ${pr.mine ? '' : scoreChip(pr) + ' ' + reviewChips(pr)} ${chips} ${pb}</div></div>
+      ${pr.mine ? threadButtons(pr) : reviewButtons(pr)}
+      <span class="votes">${people.slice(0, 5).map(r => `<span class="vote v${r.vote}" title="${esc(r.name)}: ${VOTE[r.vote] || r.vote}">${esc(initials(r.name))}</span>`).join('')}</span></div>`;
+  };
+  // your drafts untouched for a month fold away under the list
+  const stale = x => x.draft && Date.now() - new Date(x.created) > 30 * DAY;
+  const mineAll = p.active.filter(x => x.mine).sort((a, b) => !!b.comments?.you - !!a.comments?.you), mine = mineAll.filter(x => !stale(x)), old = mineAll.filter(stale);
+  const in_ = (...g) => p.active.filter(x => g.includes(prGroup(x)));
+  const sec = (t, l, hint, tail = '') => l.length || tail ? `<h3 ${hint ? `title="${hint}"` : ''}>${t} <span class="faint">${l.length + (tail ? old.length : 0)}</span></h3><div class="rows">${l.map(row).join('')}</div>${tail}` : '';
+  const oldFold = old.length ? `<details class="fold"${prOldOpen ? ' open' : ''} ontoggle="prOldOpen=this.open"><summary>${old.length} draft${old.length > 1 ? 's' : ''} older than 30 days</summary><div class="rows">${old.map(row).join('')}</div></details>` : '';
+  $('prs').innerHTML = (sec('Your comments are answered: re-check', in_('recheck'), 'Every comment thread you started is resolved or answered, and you have not approved yet')
+    + sec('Waiting on your review', in_('review'), 'You are a reviewer without a vote, and nobody else reviewed it yet')
+    + sec('Mine', mine, '', oldFold)
+    + sec('Waiting on the author', in_('waiting'), 'Some of the comments you left still wait on the author')
+    + sec('Reviewed by someone else', in_('covered'), 'Someone other than the author voted or left comments, so no review from you is needed')
+    + sec('Others into the team branch, or you approved', in_('rest', 'done'))) || '<div class="empty">No open pull requests.</div>';
+  $('prSub').textContent = 'updated ' + ago(p.at);
+}
+
+// ===================================================================== docker
+let dockerOpen = false, dockerStoppedOpen = false;
+async function dockerAction(name, act, btn) {
+  if (act === 'stop' && !confirm(`Stop container ${name}?`)) return;
+  btn.disabled = true; btn.textContent = act === 'stop' ? 'Stopping…' : 'Starting…';
+  const r = await getJson(`/api/docker/${encodeURIComponent(name)}/${act}`, { method: 'POST' }).catch(e => ({ error: { message: e.message } }));
+  toast(r.ok ? `${name} ${act === 'stop' ? 'stopped' : 'started'}` : `Failed: ${r.error?.message || r.error}`);
+  await loadDocker();
+}
+function renderDocker() {
+  const d = S.docker; if (!d) return;
+  if (d.error) { $('docker').innerHTML = errHtml(d.error) + '<div class="hint">Start Docker Desktop; this panel picks it up within 15 seconds.</div>'; return; }
+  const wts = S.wt?.worktrees || [];
+  const ctr = c => {
+    const ports = c.ports.map(p => p.split(':')[0]), users = wts.filter(w => ports.includes(String(w.db)));
+    const ok = c.state === 'running', health = c.health === 'healthy' ? 'ok' : c.health === 'unhealthy' ? 'bad' : ok ? 'ok' : '';
+    const mem = c.hist.map(h => h[2]);
+    return `<div class="ctr"><span class="dot ${health} ${ok ? 'live' : ''}" title="${esc(c.status)}"></span>
+      <div style="min-width:0"><div class="t"><b>${esc(c.name)}</b> <span class="muted mono">${c.ports.map(p => ':' + p.split(':')[0]).join(' ')}</span></div>
+        <div class="s">${esc(c.status)}${users.length ? ` · used by ${users.map(w => `<span class="mono">${esc(w.path.split('/').pop())}</span>`).join(', ')}` : ''}</div></div>
+      <div class="n" title="memory over the last 15 minutes">${ok ? `${spark(mem, 80, 24, 'var(--accent)')}<div>${fmtB(c.mem)} · ${c.cpu?.toFixed(1) ?? '–'}% CPU</div>` : ''}</div>
+      <button onclick="dockerAction('${esc(c.name)}','${ok ? 'stop' : 'start'}',this)">${ok ? 'Stop' : 'Start'}</button></div>`;
+  };
+  // running containers first; the stopped ones fold away
+  const run = d.containers.filter(c => c.state === 'running'), stopped = d.containers.filter(c => c.state !== 'running');
+  let h = `<div>${run.map(ctr).join('') || `<div class="empty">${stopped.length ? 'Nothing running.' : 'No containers.'}</div>`}</div>`;
+  if (stopped.length) h += `<details class="fold"${dockerStoppedOpen ? ' open' : ''} ontoggle="dockerStoppedOpen=this.open"><summary>${stopped.length} stopped container${stopped.length > 1 ? 's' : ''}</summary><div>${stopped.map(ctr).join('')}</div></details>`;
+  // disk
+  if (d.df?.length) {
+    const tot = d.df.reduce((t, x) => t + x.size, 0) || 1, rec = d.df.reduce((t, x) => t + x.reclaim, 0);
+    h += `<h3 style="margin-top:14px">Disk ${fmtB(tot)} · ${fmtB(rec)} reclaimable</h3><div class="bars">` + d.df.map(x =>
+      `<div class="bar"><span class="muted">${esc(x.type)}</span>${meter([[(x.size - x.reclaim) / tot, 'var(--accent)'], [x.reclaim / tot, 'color-mix(in srgb, var(--accent) 30%, transparent)']])}<span class="n">${fmtB(x.size)}${x.reclaim ? ` <span class="faint">(${fmtB(x.reclaim)} free-able)</span>` : ''}</span></div>`).join('') + '</div>';
+  }
+  // images of DEV_IMAGE_PREFIX with no container left
+  const used = new Set(d.containers.map(c => c.image.replace(/:latest$/, '')));
+  const orphans = (d.images || []).filter(i => CONF.devImagePrefix && i.repo.startsWith(CONF.devImagePrefix) && !used.has(i.repo) && !used.has(`${i.repo}:${i.tag}`)).sort((a, b) => b.size - a.size);
+  if (orphans.length) h += `<details style="margin-top:14px"${dockerOpen ? ' open' : ''} ontoggle="dockerOpen=this.open"><summary style="cursor:pointer"><h3 style="display:inline">Images without a container <span class="faint">${orphans.length}</span></h3></summary>
+    <div class="rows">${orphans.map(i => `<div class="row"><div class="main"><div class="t mono">${esc(i.repo)}:${esc(i.tag)}</div><div class="s">built ${esc(i.created)}</div></div><span class="n">${fmtB(i.size)}</span></div>`).join('')}</div>
+    <div class="hint">They share layers, so removing one frees less than its size. <code>docker rmi &lt;name&gt;</code> removes one.
+    <button style="margin-left:6px" onclick="navigator.clipboard.writeText(${esc(JSON.stringify(orphans.map(i => `docker rmi ${i.repo}:${i.tag}`).join('\n')))}).then(()=>toast('${orphans.length} docker rmi commands copied'))">Copy rmi commands</button></div></details>`;
+  $('docker').innerHTML = h;
+  $('dkSub').textContent = 'sampled ' + ago(d.at);
+}
+
+// ===================================================================== local sites + machine
+function renderLocal() {
+  const l = S.local; if (!l) return;
+  const wts = S.wt?.worktrees || [];
+  const where = p => { if (!p) return null; const n = p.replace(/\\/g, '/').toLowerCase(); const w = wts.filter(w => n.startsWith(w.path.toLowerCase() + '/')).sort((a, b) => b.path.length - a.path.length)[0]; return w ? w.path.split('/').pop() : p; };
+  // "Serves" needs applicationHost.config, which this account can only read elevated: without it the column is left out
+  $('sites').innerHTML = `<table><thead><tr><th></th><th>Site</th><th>Answer</th>${l.iisReadable ? '<th>Serves</th>' : ''}</tr></thead><tbody>${l.sites.map(s => `<tr>
+    <td style="width:14px"><span class="dot ${s.up ? (s.code >= 500 ? 'warn' : 'ok') : 'bad'}"></span></td>
+    <td><a href="${s.url}" target="_blank">${esc(s.name)}</a> <span class="faint mono">:${new URL(s.url).port}</span></td>
+    <td class="muted">${s.up ? `${s.code} in ${s.ms} ms` : esc(s.error === 'timed out' ? 'no answer in 8 s (starting?)' : s.error)}</td>
+    ${l.iisReadable ? `<td class="mono muted">${esc(where(s.path) || '–')}</td>` : ''}</tr>`).join('')}</tbody></table>
+    ${l.pools.length ? `<div class="hint">${l.pools.length} IIS worker process${l.pools.length > 1 ? 'es' : ''} · ${fmtB(l.pools.reduce((t, p) => t + p.mem, 0))}</div>` : ''}
+    ${l.express.length ? `<h3 style="margin-top:12px">IIS Express</h3><div class="rows">${l.express.map(x => `<div class="row"><span class="dot ok live"></span><div class="main"><div class="t">${esc(x.site || 'site')} <span class="mono muted">${x.ports.map(p => ':' + p).join(' ')}</span></div><div class="s">${esc(x.config)}</div></div><span class="n">${fmtB(x.mem)}</span></div>`).join('')}</div>` : ''}`;
+  $('siteSub').textContent = 'probed ' + ago(l.at);
+  const cpu = (l.cpu || []).map(c => c[1]), mem = (l.mem || []).map(m => m[1]), memNow = mem.at(-1) || 0;
+  const disk = d => `<div class="bar"><span class="muted">${esc(d.id)} ${esc(d.label || '')}</span>${meter([[(d.size - d.free) / d.size, (d.free / d.size) < .1 ? 'var(--danger)' : 'var(--info)']])}<span class="n">${fmtB(d.free)} free of ${fmtB(d.size)}</span></div>`;
+  $('machine').innerHTML = `<div class="minis" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+      <div class="mini" style="position:relative"><div class="v">${cpu.length ? cpu.at(-1).toFixed(0) : '–'}%</div><div class="l">CPU, ${l.cpus} threads</div><div style="position:absolute;right:8px;top:8px">${spark(cpu.slice(-60), 90, 30, 'var(--info)', { max: 100 })}</div></div>
+      <div class="mini" style="position:relative"><div class="v">${fmtB(memNow)}</div><div class="l">of ${fmtB(l.totalmem)} memory</div><div style="position:absolute;right:8px;top:8px">${spark(mem.slice(-60), 90, 30, 'var(--accent)', { max: l.totalmem })}</div></div></div>
+    <div class="bars">
+      <div class="bar"><span class="muted">Memory</span>${meter([[(memNow - l.vm - l.dev.reduce((t, d) => t + d.mem, 0)) / l.totalmem, 'var(--info)'], [l.vm / l.totalmem, 'var(--accent)'], [l.dev.reduce((t, d) => t + d.mem, 0) / l.totalmem, 'var(--warning)']])}<span class="n">${Math.round(memNow / l.totalmem * 100)}%</span></div>
+      ${l.disks.map(disk).join('')}
+    </div>
+    <div class="legend" style="margin-top:8px"><span>${sq('var(--accent)')}Docker/WSL VM ${fmtB(l.vm)}</span><span>${sq('var(--warning)')}Visual Studio ${fmtB(l.dev.reduce((t, d) => t + d.mem, 0))}</span><span>${sq('var(--info)')}everything else</span></div>`;
+  const up = l.uptime, d = Math.floor(up / 86400), hh = Math.floor(up % 86400 / 3600);
+  $('mSub').textContent = `${l.host} · up ${d ? d + ' d ' : ''}${hh} h`;
+}
+
+// ===================================================================== worktrees
+let cleanCmds = [];
+function renderWorktrees() {
+  const w = S.wt; if (!w) return;
+  if (w.error) { $('worktrees').innerHTML = errHtml(w.error); return; }
+  const ctrs = S.docker?.containers || [], bySite = new Map();
+  if (S.local?.iisReadable) for (const s of S.local.sites) if (s.path) bySite.set(s.name, s.path);
+  const pbiOf = b => (b || '').match(/(?:^|\/)(\d{5})(?=[-_/]|$)/)?.[1];
+  const rows = w.worktrees.map(t => {
+    const name = t.path.split('/').pop(), ageD = t.date ? (Date.now() - new Date(t.date)) / DAY : 0;
+    const ctr = t.db ? ctrs.find(c => c.ports.some(p => p.startsWith(t.db + ':'))) : null;
+    const pr = t.pr, prDone = pr && pr.status !== 'active', clean = !t.modified && !t.untracked;
+    let tip, cls;
+    if (t.main) { tip = 'main checkout'; cls = 'info'; }
+    else if (t.missing) { tip = 'folder is gone: git worktree prune'; cls = 'bad'; }
+    else if (prDone && clean) { tip = `PR ${pr.status}, nothing local: safe to remove`; cls = 'ok'; }
+    else if (prDone) { tip = `PR ${pr.status}, but ${t.modified + t.untracked} local change${t.modified + t.untracked > 1 ? 's' : ''}`; cls = 'warn'; }
+    else if (!pr && ageD > 21 && clean) { tip = `no PR, untouched for ${Math.round(ageD)} days`; cls = 'warn'; }
+    else if (t.behind > 20 && pr?.status === 'active') { tip = `rebase: ${t.behind} behind ${t.base}`; cls = 'warn'; }
+    else { tip = 'in use'; cls = ''; }
+    const safe = cls === 'ok';
+    return { t, name, pr, ctr, tip, cls, safe, ageD };
+  }).sort((a, b) => (b.t.main - a.t.main) || (a.safe - b.safe) || new Date(b.t.date) - new Date(a.t.date));
+  cleanCmds = rows.filter(r => r.safe).map(r => `git -C "${S.wt.worktrees.find(x => x.main)?.path || '.'}" worktree remove "${r.t.path}"`);
+  $('copyClean').disabled = !cleanCmds.length;
+  $('copyClean').textContent = cleanCmds.length ? `Copy clean-up commands (${cleanCmds.length})` : 'Nothing to clean up';
+  const base = Object.entries(w.bases).map(([b, d]) => `${b.replace('origin/', '')} fetched ${ago(d)}`).join(' · ');
+  $('wtSub').textContent = `${w.worktrees.length} worktrees · ${rows.filter(r => r.safe).length} safe to remove · ${base}`;
+  $('worktrees').innerHTML = `<table><thead><tr><th>Worktree</th><th>Branch / PR</th><th>Last commit</th><th class="num">Behind</th><th class="num">Ahead</th><th class="num">Local changes</th><th>Dev DB</th><th>Status</th></tr></thead><tbody>${rows.map(({ t, name, pr, ctr, tip, cls }) => {
+    const pbi = pbiOf(t.branch), live = pbi && BL?.live.get(+pbi);
+    return `<tr class="${cls === 'ok' ? 'dim' : ''}">
+      <td><span class="mono" title="${esc(t.path)}">${esc(name)}</span>${t.path.includes('/.t3/') ? ' <span class="chip accent" title="created by T3 Code">T3</span>' : ''}</td>
+      <td><div class="mono">${esc(t.branch || 'detached ' + (t.head || '').slice(0, 8))}</div>
+        <div class="muted" style="font-size:12px">${pbi ? `<a href="${wi(pbi)}" target="_blank">#${pbi}</a>${live ? ' ' + esc(live.state) : ''}` : ''}${pr ? `${pbi ? ' · ' : ''}<a href="${pr.url}" target="_blank">!${pr.id}</a> <span class="chip ${pr.status === 'completed' ? 'ok' : pr.status === 'abandoned' ? '' : 'info'}">${pr.status}</span>` : ''}</div></td>
+      <td><div style="max-width:340px" class="t" title="${esc(t.subject)}">${esc(t.subject || '')}</div><div class="muted" style="font-size:12px">${t.short || ''} · ${t.date ? ago(t.date) : ''}</div></td>
+      <td class="num">${t.behind ?? '–'} <span class="faint">${esc(t.base || '')}</span></td><td class="num">${t.ahead ?? '–'}</td>
+      <td class="num">${t.modified || t.untracked ? `${t.modified ? t.modified + ' modified' : ''}${t.modified && t.untracked ? ', ' : ''}${t.untracked ? t.untracked + ' new' : ''}` : '<span class="faint">clean</span>'}</td>
+      <td>${t.db ? `<span class="mono">:${t.db}</span> ${ctr ? `<span class="chip ${ctr.state === 'running' ? 'ok' : ''}">${esc(ctr.name)}</span>` : '<span class="chip">no container</span>'}` : '<span class="faint">–</span>'}</td>
+      <td><span class="chip ${cls}">${esc(tip)}</span></td></tr>`; }).join('')}</tbody></table>`;
+}
+$('copyClean').onclick = async () => { await navigator.clipboard.writeText(cleanCmds.join('\n')); toast(`${cleanCmds.length} commands copied. Uncommitted work blocks git worktree remove, so nothing is lost by accident.`); };
+
+// ===================================================================== dependency graph
+function drawGraph() {
+  if (!BL) return;
+  const { items, edges, all, closure } = BL;
+  const svg = $('g'), tip = $('gTip'), box = $('gbox');
+  const W = 138, H = 36, CG = 44, VG = 10, PAD = 14, HEAD = 22;
+  // the chosen priority, plus (faded) whatever of another priority it waits on
+  const core = new Set(all.filter(inPrio).map(i => i.id)), ctx = new Set();
+  for (const id of core) for (const x of closure(id, 'preds', false)) if (!core.has(x)) ctx.add(x);
+  const vis = all.filter(i => core.has(i.id) || ctx.has(i.id)), vset = new Set(vis.map(i => i.id));
+  $('gScope').textContent = prio === 'all' ? '' : `Showing ${core.size} open ${prioLabel(prio)} item${core.size === 1 ? '' : 's'}${ctx.size ? `, and faded, the ${ctx.size} of another priority they wait on` : ''}.`;
+  const ve = edges.filter(([a, b]) => vset.has(a) && vset.has(b)), linked = new Set(ve.flatMap(([a, b]) => [a, b]));
+  const g = vis.filter(i => linked.has(i.id)), lone = vis.filter(i => !linked.has(i.id));
+  const depth = new Map(), pin = new Map(g.map(i => [i.id, []])), pout = new Map(g.map(i => [i.id, []]));
+  for (const [a, b] of ve) { pin.get(b).push(a); pout.get(a).push(b); }
+  const d = id => { if (depth.has(id)) return depth.get(id); const v = Math.max(-1, ...pin.get(id).map(d)) + 1; depth.set(id, v); return v; };
+  g.forEach(i => d(i.id));
+  const cols = []; for (const i of g) (cols[depth.get(i.id)] ||= []).push(i.id);
+  const pos = new Map(), so = { active: 0, blocked: 1, ready: 2, waiting: 3, close: 4 };
+  cols.forEach(c => { c.sort((a, b) => so[items.get(a).status] - so[items.get(b).status] || a - b); c.forEach((id, k) => pos.set(id, k / Math.max(1, c.length - 1))); });
+  for (let s = 0; s < 8; s++) { const fwd = s % 2 === 0;
+    for (const c of (fwd ? cols : [...cols].reverse())) { const bc = id => { const nb = fwd ? pin.get(id) : pout.get(id); return nb.length ? nb.reduce((t, x) => t + pos.get(x), 0) / nb.length : pos.get(id); };
+      const v = new Map(c.map(id => [id, bc(id)])); c.sort((a, b) => v.get(a) - v.get(b)); c.forEach((id, k) => pos.set(id, k / Math.max(1, c.length - 1))); } }
+  const maxRows = Math.max(1, ...cols.map(c => c.length)), gh = HEAD + maxRows * (H + VG), xy = new Map();
+  cols.forEach((c, ci) => { const off = (maxRows - c.length) * (H + VG) / 2; c.forEach((id, k) => xy.set(id, [PAD + ci * (W + CG), HEAD + off + k * (H + VG)])); });
+  const perRow = Math.max(4, cols.length, Math.floor((box.clientWidth - PAD * 2 + CG) / (W + CG))), ly = gh + 34;
+  lone.sort((a, b) => so[a.status] - so[b.status] || prank[a.phase] - prank[b.phase] || a.id - b.id).forEach((i, k) => xy.set(i.id, [PAD + (k % perRow) * (W + CG), ly + Math.floor(k / perRow) * (H + VG)]));
+  const width = PAD * 2 + Math.max(1, cols.length, Math.min(perRow, lone.length)) * (W + CG) - CG, height = ly + Math.ceil(lone.length / perRow) * (H + VG) + PAD;
+  let s = '';
+  cols.forEach((c, ci) => s += `<text class="colhead" x="${PAD + ci * (W + CG)}" y="13">${ci === 0 ? 'Can start / in progress' : 'Step ' + ci}</text>`);
+  s += `<text class="colhead" x="${PAD}" y="${ly - 10}">No links in this view</text><line x1="${PAD}" x2="${width - PAD}" y1="${ly - 26}" y2="${ly - 26}" stroke="var(--border)"/>`;
+  for (const [a, b, p] of ve) { const [x1, y1] = xy.get(a), [x2, y2] = xy.get(b), sx = x1 + W, sy = y1 + H / 2, tx = x2, ty = y2 + H / 2, m = Math.max(24, (tx - sx) / 2);
+    s += `<path class="edge${p ? ' partial' : ''}" data-a="${a}" data-b="${b}" d="M${sx},${sy} C${sx + m},${sy} ${tx - m},${ty} ${tx},${ty}"/>`; }
+  for (const i of vis) { const [x, y] = xy.get(i.id), c = ST[i.status].color, t = i.title.length > 24 ? i.title.slice(0, 23) + '…' : i.title;
+    const badge = prio === 'all' ? (/^p[1-9]$/.test(i.phase) ? i.phase.toUpperCase() : '') : i.phase === prio ? '' : i.phase === '-' ? 'no tag' : i.phase.toUpperCase();
+    s += `<g class="node${ctx.has(i.id) ? ' ctx' : ''}" data-id="${i.id}" transform="translate(${x},${y})"><rect width="${W}" height="${H}" rx="6" style="fill:color-mix(in srgb, ${c} 12%, var(--card));stroke:color-mix(in srgb, ${c} 55%, var(--border))"${i.auto ? ' stroke-dasharray="4 3"' : ''}/>
+      <rect width="3" height="${H}" rx="1.5" style="fill:${c}"/><text class="gl" x="${W - 8}" y="13" text-anchor="end" style="fill:${c}">${ST[i.status].glyph}</text>
+      <text class="c" x="9" y="14">${esc(i.code)}${badge ? ' · ' + badge : ''}</text><text class="tt" x="9" y="28">${esc(t)}</text></g>`; }
+  svg.setAttribute('width', width); svg.setAttribute('height', height); box.style.height = (height + 4) + 'px'; svg.innerHTML = s;
+  const hl = id => { if (!id) { svg.classList.remove('dimg'); svg.querySelectorAll('.hl').forEach(e => e.classList.remove('hl')); return; }
+    const up = closure(id, 'preds', false), dn = closure(id, 'succs', false), on = new Set([id, ...up, ...dn]); svg.classList.add('dimg');
+    svg.querySelectorAll('.node').forEach(n => n.classList.toggle('hl', on.has(+n.dataset.id)));
+    svg.querySelectorAll('.edge').forEach(e => { const a = +e.dataset.a, b = +e.dataset.b;
+      e.classList.toggle('hl', on.has(a) && on.has(b) && ((up.has(a) || a === id) && (up.has(b) || b === id) || (dn.has(a) || a === id) && (dn.has(b) || b === id))); }); };
+  let cur = null;
+  svg.onmousemove = e => { const n = e.target.closest('.node'); if (!n) { tip.style.display = 'none'; if (cur) { cur = null; hl(null); } return; }
+    const i = items.get(+n.dataset.id), openP = i.preds.filter(x => items.get(x.id).ov !== 'close').map(x => items.get(x.id).code + (x.p ? ' (one AC)' : ''));
+    tip.innerHTML = `<b>${esc(i.code)} #${i.id}</b> · ${i.phase === '-' ? 'untagged' : i.phase.toUpperCase()}${i.state ? ' · ' + esc(i.state) : ''}<br>${esc(i.title)}<br><span class="m">${ST[i.status].glyph} ${ST[i.status].label}${i.who ? ' · ' + esc(i.who) : ''}</span>
+      ${openP.length ? `<br><span class="m">Waits on:</span> ${openP.join(', ')}` : ''}${i.down ? `<br><span class="m">Holds up:</span> ${i.down} open item${i.down > 1 ? 's' : ''}` : ''}${i.note ? `<br>${esc(i.note)}` : ''}${i.ext ? `<br><span class="m">Outside:</span> ${esc(i.ext)}` : ''}${i.auto ? '<br><span class="m">Not in backlog-data.js yet: its dependencies aren\'t drawn.</span>' : ''}`;
+    place(tip, box, e); if (cur !== i.id) { cur = i.id; hl(i.id); } };
+  svg.onmouseleave = () => { tip.style.display = 'none'; cur = null; hl(null); };
+  svg.onclick = e => { const n = e.target.closest('.node'); if (n) window.open(wi(n.dataset.id), '_blank'); };
+  $('gLegend').innerHTML = Object.values(ST).map(v => `<span><span class="dot" style="background:${v.color}"></span>${v.glyph} ${v.label}</span>`).join('');
+  $('newItems').innerHTML = BL.newOpen.length ? `<details style="margin-top:12px"><summary class="hint" style="cursor:pointer;margin:0">Dashed boxes: ${BL.newOpen.length} open item${BL.newOpen.length > 1 ? 's' : ''} without a row in backlog-data.js, drawn without their dependencies. Add a row and its edges when one waits on another item. <span style="text-decoration:underline dotted">List them</span></summary>
+    <div class="rows" style="margin-top:6px">${BL.newOpen.map(i => `<div class="row"><div class="main"><div class="t"><a class="code" href="${wi(i.id)}" target="_blank">#${i.id}</a> ${esc(i.title)}</div><div class="s">${esc(i.type)} · ${prioLabel(i.phase)} · ${esc(i.state)} · created ${fmt(toT(i.created))}</div></div>${avatar(i.who)}</div>`).join('')}</div></details>` : '';
+}
+
+// ===================================================================== shared lookups
+const removedItems = () => BL ? [...BL.live.values()].filter(i => i.state === 'Removed') : [];
+const codeOf = id => BL?.items.get(id)?.code || BL?.live.get(id)?.title.match(/^(PBI-\S+)/)?.[1] || '#' + id;
+const itemLink = id => `<a class="code" href="${wi(id)}" target="_blank" title="${esc(BL?.live.get(id)?.title || '')}">${esc(codeOf(id))}</a>`;
+const fchips = (el, opts, cur, onPick) => { el.innerHTML = opts.map(([v, l, n]) => `<button class="fchip ${v === cur ? 'on' : ''}" data-v="${esc(v)}">${esc(l)}${n != null ? ` <span class="faint">${n}</span>` : ''}</button>`).join('');
+  el.onclick = e => { const b = e.target.closest('button'); if (b) onPick(b.dataset.v); }; };
+
+// ===================================================================== waiting on people
+// the questions holding the most board items first; the rest behind a button
+let pplPick = '', pplAll = false;
+const PPL_TOP = 8;
+const ownersOf = q => q.owner.split(/\s*(?:\+|\/|,| and )\s*/).map(s => s.trim()).filter(Boolean);
+function renderPeople() {
+  const d = S.design; if (!d) return;
+  if (d.error) { $('people').innerHTML = errHtml(d.error); return; }
+  const qs = d.questions, counts = {};
+  qs.forEach(q => ownersOf(q).forEach(o => counts[o] = (counts[o] || 0) + 1));
+  if (pplPick && !counts[pplPick]) pplPick = '';
+  fchips($('pplFilter'), [['', 'Everyone', qs.length], ...Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([o, n]) => [o, o.length > 24 ? o.slice(0, 22) + '…' : o, n])], pplPick, v => { pplPick = v; renderPeople(); });
+  // which open board items wait on each question: the PBI text names it, or the curated note does
+  const holds = id => {
+    const out = new Set();
+    if (BL) { for (const i of BL.live.values()) if (i.qs?.includes(id)) out.add(i.id); for (const i of BL.items.values()) if ((i.note + ' ' + i.ext).includes(id)) out.add(i.id); }
+    return [...out];
+  };
+  const fileUrl = d.fileUrl;
+  const list = qs.filter(q => !pplPick || ownersOf(q).includes(pplPick)).map(q => ({ ...q, holds: holds(q.id) }))
+    .sort((a, b) => b.holds.length - a.holds.length || (/P0/.test(b.need) - /P0/.test(a.need)));
+  const more = list.length - PPL_TOP;
+  $('people').innerHTML = `<div class="rows">${list.slice(0, pplAll ? list.length : PPL_TOP).map(q => {
+    const days = q.opened ? Math.round((todayT() - toT(q.opened)) / DAY) : null;
+    return `<div class="row" style="align-items:flex-start"><div class="main">
+      <div class="t" style="white-space:normal"><a class="code" href="${fileUrl}" target="_blank">${esc(q.id)}</a> ${esc(q.question)}</div>
+      <div class="s" style="white-space:normal;margin-top:2px">${ownersOf(q).map(o => `<span class="chip accent">${esc(o)}</span>`).join(' ')}
+        <span class="chip" title="Needed by">${esc(q.need.length > 60 ? q.need.slice(0, 58) + '…' : q.need)}</span>
+        ${days != null ? `<span class="chip ${days > 14 ? 'warn' : ''}">open ${days} d</span>` : ''}
+        ${q.holds.length ? `<span class="chip bad">holds ${q.holds.length}</span> ${q.holds.map(itemLink).join(' ')}` : ''}</div>
+      <div class="s" style="white-space:normal;margin-top:3px" title="${esc(q.position)}">Now: ${esc(q.position.length > 170 ? q.position.slice(0, 168) + '…' : q.position)}</div></div></div>`; }).join('')}</div>`
+    + (more > 0 ? `<button style="margin-top:8px" onclick="pplAll = !pplAll; renderPeople()">${pplAll ? 'Show the first ' + PPL_TOP : `Show all ${list.length}`}</button>` : '');
+  $('pplSub').textContent = `${qs.length} open questions in ${d.file} · ${qs.filter(q => holds(q.id).length).length} holding board items`;
+}
+
+// ===================================================================== board hygiene
+function renderHygiene() {
+  if (!BL) { $('hygiene').innerHTML = S.backlog?.error ? errHtml(S.backlog.error) : '<div class="empty">loading…</div>'; return; }
+  const live = [...BL.live.values()].filter(i => i.state !== 'Removed');
+  const open = live.filter(i => i.state !== 'Done'), now = Date.now();
+  const days = d => Math.round((now - new Date(d)) / DAY);
+  const rem = removedItems(), remCodes = new Map(rem.map(i => [i.title.match(/^(PBI-\S+)/)?.[1], i]).filter(([c]) => c)), remIds = new Set(rem.map(i => i.id));
+  const checks = [
+    ['In progress for over a week without a PR', 'warn', open.filter(i => /Committed|In Progress/.test(i.state) && days(i.stateChanged) > 7 && !i.prs),
+      i => `${esc(i.state)} for ${days(i.stateChanged)} d${i.who ? ' · ' + esc(i.who) : ''}`],
+    ['In progress with nobody assigned', 'warn', open.filter(i => /Committed|In Progress/.test(i.state) && !i.who), i => esc(i.state)],
+    ['Ready P0 items nobody has picked up', '', BL.all.filter(i => i.status === 'ready' && i.phase === 'p0' && !i.who).map(i => ({ ...BL.live.get(i.id), down: i.down })).filter(i => i.id),
+      i => `unblocks ${i.down}`],
+    ['Open items pointing at removed PBIs', 'bad', open.map(i => ({ ...i, hits: [...(i.codes || []).filter(c => remCodes.has(c)), ...(i.nums || []).filter(n => remIds.has(n)).map(n => '#' + n)] })).filter(i => i.hits.length),
+      i => 'mentions ' + i.hits.map(esc).join(', ')],
+    ['Open PBIs without acceptance criteria', 'warn', open.filter(i => i.noAc && i.type === 'Product Backlog Item'), i => esc(i.state)],
+    ['Done in the last 14 days without a linked PR or commit', '', live.filter(i => i.state === 'Done' && i.closed && (todayT() - toT(i.closed)) / DAY <= 14 && !i.prs && !i.commits),
+      i => `closed ${fmt(toT(i.closed))}${i.who ? ' · ' + esc(i.who) : ''}`],
+  ];
+  const total = checks.reduce((t, c) => t + c[2].length, 0);
+  $('hygiene').innerHTML = checks.map(([title, cls, list, why]) => `<details ${list.length && cls === 'bad' ? 'open' : ''} style="border-top:1px solid var(--border);padding:7px 0">
+    <summary style="cursor:pointer;display:flex;gap:8px;align-items:center"><span class="chip ${list.length ? cls || 'info' : 'ok'}" style="min-width:34px;justify-content:center">${list.length || '✓'}</span><span>${esc(title)}</span></summary>
+    <div class="rows" style="padding:4px 0 0 42px">${list.map(i => `<div class="row"><div class="main"><div class="t">${itemLink(i.id)} ${esc(i.title.replace(/^PBI-\S+\s+—\s+/, ''))}</div><div class="s">${why(i)}</div></div>${avatar(i.who)}</div>`).join('') || '<div class="empty">nothing to fix</div>'}</div></details>`).join('');
+  $('hySub').textContent = total ? `${total} things to look at` : 'all clean';
+}
+
+// ===================================================================== since yesterday
+let feedWin = 'day', feedPick = '';
+function feedSince() {
+  if (feedWin === 'week') return Date.now() - 7 * DAY;
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  do d.setDate(d.getDate() - 1); while (d.getDay() === 0 || d.getDay() === 6);
+  return d.getTime();
+}
+function renderFeed() {
+  const since = feedSince(), ev = [], at = v => v ? new Date(v).getTime() : 0;
+  if (BL) for (const i of BL.live.values()) {
+    const label = `${itemLink(i.id)} ${esc(i.title.replace(/^PBI-\S+\s+—\s+/, ''))}`;
+    if (at(i.createdAt) >= since) ev.push({ t: at(i.createdAt), src: 'Board', html: `<b>new</b> ${label}`, who: '' });
+    if (at(i.stateChanged) >= since && i.state !== 'New') ev.push({ t: at(i.stateChanged), src: 'Board', html: `<b>${i.state === 'Done' ? 'done' : i.state === 'Removed' ? 'removed' : 'moved to ' + esc(i.state)}</b> ${label}`, who: i.who });
+  }
+  for (const p of S.prs?.recent || []) {
+    const design = !!CONF.designRepo && p.repo === CONF.designRepo;
+    if (!(design || p.target === CONF.team || p.mine)) continue;
+    const label = `<a href="${p.url}" target="_blank"><span class="code">!${p.id}</span> ${esc(p.title)}</a>`, to = `<span class="faint">→ ${design ? esc(p.repo) + '/' : ''}${esc(p.target)}</span>`;
+    if (at(p.created) >= since) ev.push({ t: at(p.created), src: 'PRs', html: `<b>opened</b> ${label} ${to}`, who: p.by });
+    // a merged design PR already shows as its "Merged PR" commit under Design
+    if (p.status !== 'active' && !(design && p.status === 'completed') && at(p.closed) >= since) ev.push({ t: at(p.closed), src: 'PRs', html: `<b>${p.status === 'completed' ? 'merged' : esc(p.status)}</b> ${label} ${to}`, who: p.by });
+  }
+  for (const c of S.design?.commits || []) if (at(c.date) >= since) ev.push({ t: at(c.date), src: 'Design', html: `<a href="${S.design.url}/commit/${c.id}" target="_blank">${esc(c.msg)}</a>`, who: c.by });
+  for (const c of S.drift?.otherAhead || []) if (at(c.date) >= since) ev.push({ t: at(c.date), src: 'Upstream', html: `<b>landed on ${esc(S.drift.other)}</b> ${c.pr ? `<a href="${S.drift.repoUrl}/pullrequest/${c.pr}" target="_blank">${esc(c.msg)}</a>` : esc(c.msg)}`, who: c.by });
+  ev.sort((a, b) => b.t - a.t);
+  const counts = {}; ev.forEach(e => counts[e.src] = (counts[e.src] || 0) + 1);
+  fchips($('feedFilter'), [['', 'All', ev.length], ...['Board', 'PRs', 'Design', 'Upstream'].map(s => [s, s, counts[s] || 0])], feedPick, v => { feedPick = v; renderFeed(); });
+  const list = ev.filter(e => !feedPick || e.src === feedPick);
+  const dayName = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); const diff = Math.round((new Date().setHours(0, 0, 0, 0) - d) / DAY);
+    return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }); };
+  const SRC = { Board: 'info', PRs: 'accent', Design: 'ok', Upstream: 'warn' };
+  let last = '', h = '';
+  for (const e of list) { const dn = dayName(e.t); if (dn !== last) { h += `<h3 style="margin-top:${last ? 12 : 0}px">${dn}</h3>`; last = dn; }
+    h += `<div class="row" style="align-items:flex-start"><span class="faint mono" style="width:38px;flex:none;padding-top:1px">${new Date(e.t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+      <span class="chip ${SRC[e.src]}" style="width:56px;justify-content:center;flex:none">${e.src}</span><div class="main"><div style="overflow-wrap:anywhere">${e.html}</div></div>${avatar(e.who)}</div>`; }
+  $('feed').innerHTML = h || '<div class="empty">Nothing happened in this window.</div>';
+  $('feedTitle').textContent = feedWin === 'week' ? 'Last 7 days' : `Since ${new Date(since).toLocaleDateString('en-GB', { weekday: 'long' })}`;
+}
+$('feedWin').onclick = e => { const b = e.target.closest('button'); if (!b) return; feedWin = b.dataset.v; $('feedWin').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); renderFeed(); };
+
+// ===================================================================== branch drift
+const DRIFT_TOP = 4; let driftAll = false;
+function renderDrift() {
+  const d = S.drift; if (!d) return;
+  if (d.error) { $('drift').innerHTML = errHtml(d.error); return; }
+  const n = d.otherAhead.filter(c => c.pending !== 0).length, inByContent = d.otherAhead.length - n, age = Math.round((Date.now() - new Date(d.commonDate)) / DAY);
+  const risk = [
+    ['Migrations', d.pending.filter(f => /\/Migrations\//i.test(f.path))],
+    ['.csproj', d.pending.filter(f => /\.csproj$/i.test(f.path))],
+    ['Packages', d.pending.filter(f => /Directory\.Packages\.props|packages\.config$/i.test(f.path))],
+    ['Configs', d.pending.filter(f => /\.config$|appsettings[\w.]*\.json$/i.test(f.path))],
+  ];
+  const short = p => p.split('/').slice(-2).join('/');
+  $('driftTitle').textContent = `${d.base} vs ${d.other}`;
+  $('drift').innerHTML = `<div class="minis" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+      <div class="mini"><div class="v">${n}</div><div class="l">${esc(d.other)} commits with changes ${esc(d.base)} lacks${inByContent ? ` · ${inByContent} more already in by content` : ""}</div></div>
+      <div class="mini"><div class="v">${age} d</div><div class="l">since the last common commit (${fmt(new Date(d.commonDate).setUTCHours(0, 0, 0, 0))})</div></div>
+      <div class="mini"><div class="v">${d.baseAhead}</div><div class="l">commits on ${esc(d.base)} not in ${esc(d.other)} yet</div></div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${risk.map(([l, fs]) => `<span class="chip ${fs.length ? (l === 'Migrations' ? 'bad' : 'warn') : 'ok'}" title="${esc(fs.map(f => f.path).join('\n'))}">${fs.length ? fs.length : '✓'} ${l}</span>`).join('')}
+      <span class="chip ${d.both.length ? 'warn' : 'ok'}" title="${esc(d.both.join('\n'))}">${d.both.length || '✓'} file${d.both.length === 1 ? '' : 's'} changed on both sides and still different</span></div>
+    ${d.both.length ? `<div class="hint" style="margin:0 0 8px">Likely conflicts when syncing: ${d.both.slice(0, 6).map(p => `<span class="mono">${esc(short(p))}</span>`).join(', ')}${d.both.length > 6 ? ` and ${d.both.length - 6} more` : ''}</div>` : ''}
+    <div class="rows">${d.otherAhead.slice(0, driftAll ? d.otherAhead.length : DRIFT_TOP).map(c => `<div class="row"><div class="main"><div class="t">${c.pr ? `<a href="${d.repoUrl}/pullrequest/${c.pr}" target="_blank">${esc(c.msg)}</a>` : esc(c.msg)}</div><div class="s">${esc(c.by)} · ${ago(c.date)} ${c.pending === 0 ? `<span class="chip ok" title="Every file it changed already matches in ${esc(d.base)}">in ${esc(d.base)} by content</span>` : c.pending ? `<span class="chip warn">${c.pending} of ${c.files} files still differ</span>` : ""}</div></div>${avatar(c.by)}</div>`).join("")}</div>
+    ${d.otherAhead.length > DRIFT_TOP ? `<button style="margin-top:8px" onclick="driftAll = !driftAll; renderDrift()">${driftAll ? `Show the first ${DRIFT_TOP}` : `Show all ${d.otherAhead.length}`}</button>` : ''}
+    <div class="hint">${risk[0][1].length ? `${esc(d.other)} has migration changes: a sync may mean re-scaffolding yours on top.` : n ? `No migration, project or package changes waiting on ${esc(d.other)}: a sync should be quiet.` : `${esc(d.base)} has everything from ${esc(d.other)} by content.`} When the branches are synced by squash merges they share no history, so this compares file content, not commits.</div>`;
+  $('driftSub').textContent = 'checked ' + ago(d.at);
+}
+
+// ===================================================================== loading
+const renderAll = () => { renderHeader(); renderPrio(); renderHero(); renderFocus(); renderP0(); renderPeople(); renderBurndown(); renderThroughput(); renderHygiene(); renderFeed(); renderPrs(); renderDrift(); renderDocker(); renderLocal(); renderWorktrees(); drawGraph(); };
+async function loadBacklog(force) { S.backlog = await getJson('/api/backlog' + (force ? '?force' : '')).catch(e => ({ error: { kind: 'error', message: e.message } })); if (!S.backlog.error) buildBacklog(S.backlog); renderHeader(); renderPrio(); renderHero(); renderFocus(); renderP0(); renderPeople(); renderBurndown(); renderHygiene(); renderFeed(); renderPrs(); drawGraph(); renderWorktrees(); }
+async function loadPrs(force) { S.prs = await getJson('/api/prs' + (force ? '?force' : '')).catch(e => ({ error: { kind: 'error', message: e.message } })); renderHeader(); renderHero(); renderPrs(); renderFeed(); renderFocus(); renderP0(); }
+async function loadWt(force) { S.wt = await getJson('/api/worktrees' + (force ? '?force' : '')).catch(e => ({ error: { kind: 'error', message: e.message } })); renderWorktrees(); renderDocker(); renderLocal(); renderPrs(); }
+async function loadDocker(force) { S.docker = await getJson('/api/docker' + (force ? '?force' : '')).catch(e => ({ error: { kind: 'error', message: e.message } })); renderHeader(); renderHero(); renderDocker(); renderWorktrees(); }
+async function loadLocal(force) { S.local = await getJson('/api/local' + (force ? '?force' : '')).catch(e => ({ error: { kind: 'error', message: e.message } })); if (S.local.error) S.local = null; renderHeader(); renderHero(); renderLocal(); }
+async function loadDrift(force) { S.drift = await getJson('/api/drift' + (force ? '?force' : '')).catch(e => ({ error: { kind: 'error', message: e.message } })); renderDrift(); renderFeed(); }
+async function loadTp(force) { S.tp = await getJson('/api/throughput' + (force ? '?force' : '')).catch(e => ({ error: { kind: 'error', message: e.message } })); renderThroughput(); }
+async function loadDesign(force) { S.design = await getJson('/api/design' + (force ? '?force' : '')).catch(e => ({ error: { kind: 'error', message: e.message } })); renderPeople(); renderFeed(); }
+renderHeader(); renderPrio(); renderP0();
+getJson('/api/config').then(c => { CONF = c || {}; renderAll(); }).catch(() => {});
+addEventListener('scroll', () => $('hello').closest('.top').classList.toggle('stuck', scrollY > 8), { passive: true });
+Promise.all([loadBacklog(), loadPrs(), loadWt(), loadDocker(), loadLocal(), loadDrift(), loadDesign(), loadTp()]).then(() => $('foot').textContent = 'Loaded ' + new Date().toLocaleTimeString('en-GB'));
+setInterval(loadDocker, 15000); setInterval(loadLocal, 20000); setInterval(loadPrs, 120000); setInterval(loadWt, 120000); setInterval(loadBacklog, 300000); setInterval(loadDrift, 600000); setInterval(loadDesign, 600000); setInterval(loadTp, 1800000);
+$('refresh').onclick = async () => { const b = $('refresh'); b.disabled = true; b.textContent = 'Refreshing…';
+  await Promise.all([loadBacklog(true), loadPrs(true), loadWt(true), loadDocker(true), loadLocal(true), loadDrift(true), loadDesign(true), loadTp(true)]); b.disabled = false; b.textContent = 'Refresh'; toast('Everything refreshed'); };
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { renderBurndown(); renderThroughput(); drawGraph(); }, 150); });
+</script>
+</body></html>
